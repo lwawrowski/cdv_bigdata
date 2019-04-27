@@ -56,6 +56,8 @@ wlkp_z <- wlkp %>%
   select(-kod, -nazwa, -dlugosc_zywoplotow) %>%
   scale()
 
+corrplot::corrplot(cor(wlkp_z))
+
 Optimal_Clusters_KMeans(data = wlkp_z, 
                         max_clusters = 15,
                         criterion = "WCSSE")
@@ -64,7 +66,7 @@ wlkp_g <- KMeans_rcpp(data = wlkp_z, clusters = 6)
 
 wlkp$grupa <- as.factor(wlkp_g$clusters)
 
-ggplot(wlkp, aes(x=wynagrodzenie, 
+ggplot(wlkp, aes(x=stopa_bezr, 
                     y=pomoc_spoleczna,
                     color=grupa)) +
   geom_point()
