@@ -1,0 +1,63 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(caTools)
+library(caret)
+library(class)
+
+d <- read.csv("dane/Social_Network_Ads.csv")
+
+d <- d %>%
+  select(-User.ID, -Gender) %>%
+  mutate(Purchased=factor(Purchased, levels = c(0,1)),
+         podzial=sample.split(Purchased, SplitRatio = 0.75))
+
+train <- d %>%
+  filter(podzial==TRUE) %>%
+  select(-podzial) %>%
+  mutate_if(is.numeric, funs(scale))
+
+test <- d %>%
+  filter(podzial==FALSE) %>%
+  select(-podzial) %>%
+  mutate_if(is.numeric, funs(scale))
+
+y_train <- knn(train = train[,-3], test = train[,-3], cl = train[,3], k = 20, prob = T)
+
+cm_train <- table(train[,3], y_train)
+
+confusionMatrix(cm_train)
+
+```
+
+```{r}
+y_test <- knn(train = train[,-3], test = test[,-3], cl = train[,3], k = 20)
+
+cm_test <- table(test[,3], y_test)
+
+confusionMatrix(cm_test)
+
+```
+
+# imputacja
+
+```{r}
+library(VIM)
+
+load("dane/pracownicy.RData")
+
+braki <- pracownicy
+  
+obs <- sample(1:nrow(braki), 20)
+braki$kat_pracownika[obs] <- NA
+
+obs <- sample(1:nrow(braki), 20)
+braki$pwynagrodzenie[obs] <- NA
+
+imputacja <- kNN(braki, variable = c("kat_pracownika", "pwynagrodzenie"), k=20, numFun = mean)
+
+```

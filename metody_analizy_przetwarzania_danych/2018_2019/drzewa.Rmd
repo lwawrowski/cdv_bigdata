@@ -1,0 +1,73 @@
+```{r}
+library(tidyverse)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+options(scipen=1)
+
+d <- read.csv("dane/Social_Network_Ads.csv")
+
+d <- d %>%
+  select(-User.ID) %>%
+  mutate(Purchased=factor(Purchased, levels = c(0,1)),
+         podzial=sample.split(Purchased, SplitRatio = 0.75),
+         EstimatedSalary=EstimatedSalary/10000)
+
+train <- d %>%
+  filter(podzial==TRUE) %>%
+  select(-podzial)
+
+test <- d %>%
+  filter(podzial==FALSE) %>%
+  select(-podzial)
+
+drzewo <- rpart(formula = Purchased ~ ., data = train, method = "class")
+
+rpart.plot(drzewo)
+```
+
+```{r}
+ggplot(train, aes(Age, EstimatedSalary)) + geom_point(aes(color=Purchased))
+```
+
+
+```{r}
+# complexity parameter
+printcp(drzewo)
+```
+
+```{r}
+plotcp(drzewo)
+```
+
+```{r}
+# optimum <- drzewo$cptable[which.min(drzewo$cptable[,"xerror"]),"CP"]
+
+# drzewo_opt <- prune(drzewo, cp=optimum)
+
+y_test <- predict(drzewo, newdata = test[-3], type = 'class') 
+
+# confusion matrix / macierz pomyłek / klasyfikacja binarna
+
+cm <- table(test[, 3], y_test) 
+cm
+```
+
+```{r}
+# dokładność
+
+accuracy <- sum(diag(cm))/sum(cm)
+accuracy
+```
+
+```{r}
+# tablica pomyłek
+confusionMatrix(cm)
+# czułość - Sensitivity
+# swoistość - Specificity
+# dokładność - accuracy
+```
+
+

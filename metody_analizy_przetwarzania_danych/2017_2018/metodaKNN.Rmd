@@ -1,0 +1,101 @@
+---
+title: "Metoda KNN"
+output: html_notebook
+---
+
+```{r}
+
+# install.packages(c("tidyverse", "caTools", "rpart", "rpart.plot", "caret"))
+
+library(tidyverse)
+library(caTools)
+library(caret)
+library(class)
+
+d <- read.csv("dane/Social_Network_Ads.csv")
+
+d2 <- d %>%
+  select(-User.ID, -Gender) %>%
+  mutate(Purchased=factor(Purchased, levels = c(0,1)),
+         podzial=sample.split(Purchased, SplitRatio = 0.75))
+
+train <- d2 %>%
+  filter(podzial==TRUE) %>%
+  select(-podzial)
+
+test <- d2 %>%
+  filter(podzial==FALSE) %>%
+  select(-podzial)
+
+ggplot(train, aes(Age, EstimatedSalary)) + geom_point(aes(color=Purchased))
+
+```
+
+```{r}
+y_train <- knn(train = train, test = train, cl = train$Purchased, k = 6)
+
+cm_train <- table(train$Purchased, y_train)
+cm_train
+
+confusionMatrix(cm_train)
+```
+
+```{r}
+y_test <- knn(train = train, test = test, cl = train$Purchased, k = 8)
+
+cm_test <- table(test$Purchased, y_test)
+cm_test
+
+confusionMatrix(cm_test)
+```
+
+```{r}
+set.seed(123)
+acc <- numeric(29)
+
+for(i in 2:30){
+  y_test <- knn(train = train, test = test, cl = train$Purchased, k = i)
+  cm_test <- table(test$Purchased, y_test)
+  acc[i] <- sum(diag(cm_test))/sum(cm_test)
+}
+
+plot(1:30, acc)
+
+```
+
+```{r}
+#install.packages("VIM")
+
+library(VIM)
+
+# pracownicy <- read.csv("dane/pracownicy.csv", sep=";", dec=",")
+
+# save(pracownicy, file = "dane/pracownicy.RData")
+
+load("dane/pracownicy.RData")
+
+braki <- pracownicy
+
+obs <- sample(1:nrow(braki), 50)
+obs
+
+braki$kat_pracownika[obs] <- NA
+braki$bwynagrodzenie[obs] <- NA
+
+imputacja <- kNN(braki, variable = c("kat_pracownika", "bwynagrodzenie"), k = 20, numFun = median, dist_var = c("edukacja", "pwynagrodzenie", "staz"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

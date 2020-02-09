@@ -1,0 +1,90 @@
+---
+title: "Drzewa klasyfikacyjne"
+output: html_notebook
+---
+
+```{r}
+
+install.packages(c("tidyverse", "caTools", "rpart", "rpart.plot", "caret"))
+
+library(tidyverse)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+d <- read.csv("dane/Social_Network_Ads.csv")
+
+d2 <- d %>%
+  select(-User.ID, -Gender) %>%
+  mutate(Purchased=factor(Purchased, levels = c(0,1)),
+         podzial=sample.split(Purchased, SplitRatio = 0.75))
+
+train <- d2 %>%
+  filter(podzial==TRUE) %>%
+  select(-podzial)
+
+test <- d2 %>%
+  filter(podzial==FALSE) %>%
+  select(-podzial)
+
+ggplot(train, aes(Age, EstimatedSalary)) + geom_point(aes(color=Purchased))
+
+```
+
+```{r}
+drzewo <- rpart(Purchased ~ ., data = train)
+
+rpart.plot(drzewo)
+```
+
+```{r}
+printcp(drzewo)
+```
+
+```{r}
+plotcp(drzewo)
+```
+
+```{r wybor opotymalnego drzewa}
+
+optimum <- drzewo$cptable[which.min(drzewo$cptable[,"xerror"]),"CP"]
+optimum
+
+drzewo_opt <- prune(drzewo, cp=optimum)
+
+```
+
+```{r}
+y_train <- predict(drzewo, newdata = train, type = "class")
+
+cm_train <- table(train$Purchased, y_train)
+cm_train
+
+confusionMatrix(cm_train)
+```
+
+```{r}
+y_test <- predict(drzewo, newdata = test, type = "class")
+
+cm_test <- table(test$Purchased, y_test)
+cm_test
+
+confusionMatrix(cm_test)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
