@@ -1,0 +1,196 @@
+---
+title: "Testy statystyczne"
+author: "ŁW"
+date: "8 02 2020"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+
+summary(pracownicy)
+```
+
+# Test niezależności
+
+H0: płeć i przynależność do związków są niezależne
+
+H1: płeć i przynależność do związków nie są niezależne
+
+Poziom istotności: 5%
+
+```{r}
+table(pracownicy$plec, pracownicy$zwiazki)
+```
+
+```{r}
+chisq.test(table(pracownicy$plec, pracownicy$zwiazki))
+```
+
+Poziom istotności = 0,05 < wartość p = 0,1245 - nie mamy podstaw do odrzucenia hipotezy zerowej. Płeć i przynależność do związków są niezależne.
+
+## Zadanie
+
+```{r}
+pracownicy <- pracownicy %>% 
+  mutate(wyn_mediana=cut(x = bwynagrodzenie, 
+                         breaks = c(min(bwynagrodzenie),
+                                    median(bwynagrodzenie),
+                                    max(bwynagrodzenie)), 
+                         include.lowest = TRUE, 
+                         labels = c("poniżej mediany", 
+                                    "powyżej mediany")))
+
+summary(pracownicy$wyn_mediana)
+```
+
+H0: płeć i grupy wynagrodzenia są niezależne
+
+H1: płeć i grupy wynagrodzenia nie są niezależne
+
+Poziom istotności: 5%
+
+```{r}
+table(pracownicy$plec, pracownicy$wyn_mediana)
+```
+
+```{r}
+chisq.test(table(pracownicy$plec, pracownicy$wyn_mediana))
+```
+
+Odrzucamy H0 - płeć i grupy wynagrodzenia nie są niezależne.
+
+# Test proporcji
+
+H0: odsetek palaczy w grupach płci jest taki sam
+
+H1: odsetek palaczy w grupach płci nie jest taki sam
+
+Poziom istotności: 5%.
+
+```{r}
+prop.test(x = c(200,250), n = c(500,600))
+```
+
+Wartość p (0,6183) > poziom istności (0,05) - nie mamy podstaw do odrzucenia hipotezy zerowej. Odsetek palaczy w grupach płci jest taki sam - nie ma istotnej różnicy.
+
+## Zadanie
+
+H0: odsetek przedsiębiorstw w badaniu jest taki sam w obu sekcjach
+
+H1: odsetek przedsiębiorstw w badaniu nie jest taki sam w obu sekcjach
+
+```{r}
+prop.test(x = c(14,24), n = c(119,174))
+```
+
+Odrzucamy hipotezę zerową.
+
+# Test normalności
+
+H0: cecha doświadczenie ma rozkład normalny
+
+H1: cecha doświadczenie nie ma rozkładu normalnego
+
+Poziom istotności: 5%.
+
+```{r}
+hist(pracownicy$doswiadczenie)
+```
+
+```{r}
+shapiro.test(x = pracownicy$doswiadczenie)
+```
+
+Odrzucamy H0 - cecha doświadczenie nie ma rozkładu normalnego.
+
+```{r}
+set.seed(123)
+runif(10)
+```
+
+```{r}
+hist(runif(1000))
+```
+
+```{r}
+hist(rnorm(1000))
+```
+
+```{r}
+ggplot(pracownicy, aes(sample = doswiadczenie)) +
+  stat_qq() +
+  stat_qq_line()
+```
+
+# Test wariancji
+
+H0: zróżnicowanie wynagrodzenia w grupach płci jest takie samo
+
+H1: zróżnicowanie wynagrodzenia w grupach płci nie jest takie samo
+
+```{r}
+bartlett.test(pracownicy$bwynagrodzenie ~ pracownicy$plec)
+```
+
+Odrzucimy H0.
+
+# Test dla średnich
+
+## Próba zależna
+
+H0: średnie początkowe i bieżące wynagrodzenie jest takie samo
+
+H1: średnie początkowe i bieżące wynagrodzenie nie jest takie samo
+
+```{r}
+wilcox.test(x = pracownicy$bwynagrodzenie, 
+            y = pracownicy$pwynagrodzenie, 
+            paired = TRUE)
+```
+
+Odrzucamy H0 - średnie początkowe i bieżące wynagrodzenie nie jest takie samo.
+
+## Próba niezależna
+
+H0: średnie doświadczenie w grupach płci jest takie samo
+
+H1: średnie doświadczenie w grupach płci nie jest takie samo
+
+```{r}
+wilcox.test(pracownicy$doswiadczenie ~ pracownicy$plec)
+```
+
+Odrzucamy H0 - średnie doświadczenie w grupach płci nie jest takie samo.
+
+# Test wielu średnich
+
+H0: średnie wynagrodzenie w grupach kategorii pracownika jest takie same
+
+H1: średnie wynagrodzenie w grupach kategorii pracownika nie jest takie same - co najmniej jedna para jest różna
+
+```{r}
+kruskal.test(pracownicy$bwynagrodzenie ~ pracownicy$kat_pracownika)
+```
+
+Odrzucamy H0.
+
+```{r}
+pairwise.wilcox.test(x = pracownicy$bwynagrodzenie,
+                     g = pracownicy$kat_pracownika)
+```
+
+```{r}
+ks.test(x = pracownicy$bwynagrodzenie, y = pracownicy$pwynagrodzenie)
+```
+
+
+
+
+
+

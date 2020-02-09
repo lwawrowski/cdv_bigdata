@@ -1,0 +1,194 @@
+---
+title: "Regresja"
+output: html_notebook
+---
+
+# Wczytanie danych
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+salary <- read_xlsx("data/salary.xlsx")
+
+summary(salary)
+```
+
+
+```{r}
+plot(salary)
+```
+
+```{r}
+ggplot(salary, aes(x = YearsExperience,
+                   y = Salary)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+salary_model <- lm(formula = Salary ~ YearsExperience,
+   data = salary)
+summary(salary_model)
+```
+
+- b1 = 9450 - wzrost doświadczenia o jednostkę (rok) powoduje średni wzrost wynagrodzenia o 9450$
+
+- b0 = 25792 - osoba bez doświadczenia (0 lat) otrzyma wynagrodzenie 25792$
+
+- Su = 5788 - wartości rzeczywiste wynagrodzenia różnią się średnio o modelowych o +/- 5788$
+
+- R2 = 0,957 (95,7%) - doświadczenie wyjaśnia 95,7% zmienności wynagrodzenie
+
+```{r}
+new <- data.frame(YearsExperience=c(0.5,0.9,1.2))
+
+predict(object = salary_model, newdata = new)
+```
+
+prognozowane wynagrodzenie dla osoby z 0,5 rocznym doświadczeniem wynosi 30517$ +/- 5788$ 
+
+```{r}
+new_model <- new %>% 
+  mutate(new_salary=predict(object = salary_model, newdata = .))
+```
+
+# Zadanie
+
+```{r}
+sklep <- read_xlsx("data/sklep77.xlsx")
+
+sklep <- sklep %>% 
+  filter(czy_otwarty == "Tak")
+
+ggplot(sklep, aes(x = liczba_klientow, y = sprzedaz)) +
+  geom_point()
+```
+
+```{r}
+sklep_model <- lm(formula = sprzedaz ~ liczba_klientow,
+                  data = sklep)
+summary(sklep_model)
+```
+
+# Regresja wieloraka
+
+```{r}
+prac <- read_xlsx("data/pracownicy.xlsx")
+
+summary(prac)
+```
+
+```{r}
+prac2 <- prac %>% 
+  select(-id, -data_urodz) %>% 
+  filter(!is.na(wiek)) %>% 
+  mutate(plec=as.factor(plec),
+         kat_pracownika=as.factor(kat_pracownika),
+         zwiazki=as.factor(zwiazki))
+
+summary(prac2)
+```
+
+```{r}
+options(scipen = 5)
+prac_model <- lm(formula = bwynagrodzenie ~ ., data = prac2)
+
+summary(prac_model)
+```
+
+```{r}
+library(corrplot)
+
+korelacje <- prac2 %>% 
+  select(-plec, -kat_pracownika, - zwiazki) %>% 
+  cor()
+
+corrplot(korelacje, method = "number", type = "upper")
+```
+
+```{r}
+library(olsrr)
+
+wszystkie_modele <- ols_step_all_possible(prac_model)
+
+ols_step_both_aic(prac_model)
+```
+
+```{r}
+wybrany_model <- lm(bwynagrodzenie ~ pwynagrodzenie +
+                      kat_pracownika + doswiadczenie +
+                      staz + plec + edukacja, data = prac2)
+
+summary(wybrany_model)
+```
+
+```{r}
+ols_vif_tol(wybrany_model)
+```
+
+```{r}
+ols_plot_resid_hist(wybrany_model)
+```
+
+```{r}
+ols_plot_resid_qq(wybrany_model)
+```
+
+```{r}
+ols_test_normality(wybrany_model)
+```
+
+```{r}
+cook <- ols_plot_cooksd_bar(wybrany_model)
+```
+
+```{r}
+ols_plot_resid_stud(wybrany_model)
+```
+
+```{r}
+outliers <- cook$outliers$observation
+
+prac_out <- prac2[-outliers,]
+
+wybrany_model_out <- lm(bwynagrodzenie ~ pwynagrodzenie +
+                      kat_pracownika + doswiadczenie +
+                      staz + plec + edukacja, data = prac_out)
+
+summary(wybrany_model_out)
+```
+
+```{r}
+ols_plot_resid_qq(wybrany_model_out)
+```
+
+```{r}
+ols_test_normality(wybrany_model_out)
+```
+
+# Zadanie
+
+```{r}
+startups <- read_xlsx("data/startups.xlsx")
+
+startups <- janitor::clean_names(startups)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

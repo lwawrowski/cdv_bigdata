@@ -1,0 +1,141 @@
+---
+title: "Testy statystyczne"
+author: "ŁW"
+date: "30 11 2019"
+output: html_document
+---
+
+```{r wczytanie danych, include=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_excel("data/pracownicy.xlsx")
+```
+
+# Test niezależności
+
+H0: pomiędzy płcią a przynależnością do związków nie ma zależności
+
+H1: pomiędzy płcią a przynależnością do związków jest zależność
+
+```{r}
+chisq.test(table(pracownicy$plec, pracownicy$zwiazki))
+```
+
+Przy poziomie istotności 0,05 > wartości p (0.1245) nie ma podstaw do odrzucenia H0 - nie ma zależności pomiędzy płeć i związki zawodowe.
+
+## Zadanie
+
+Czy pomiędzy płcią, a grupami bieżącego wynagrodzenia zdefiniowanymi przez medianę istnieje zależność?
+
+```{r}
+pracownicy <- pracownicy %>% 
+  mutate(bwyn_mediana=cut(x = bwynagrodzenie,
+                          breaks = c(min(bwynagrodzenie),
+                                     median(bwynagrodzenie),
+                                     max(bwynagrodzenie)),
+                          include.lowest = TRUE))
+
+chisq.test(table(pracownicy$plec, pracownicy$bwyn_mediana))
+```
+
+Odrzucamy H0 na korzyść hipotezy alternatywnej - istnieje zależność pomiędzy płcią, a grupami wynagrodzenia.
+
+# Test proporcji
+
+H0: odsetek palaczy wg płci jest taki sam
+
+H1: odsetek palaczy różni się wg płci
+
+```{r}
+prop.test(x = c(200,250), n = c(500,600))
+```
+
+Przy poziomie istotności 0,05 nie ma podstaw do odrzucenia H0 - odsetek palaczy jest taki sam w grupach płci.
+
+# Test normalności
+
+H0: doświadczenie ma rozkład normalny
+
+H1: doświadczenie nie ma rozkładu normalnego
+
+```{r}
+shapiro.test(pracownicy$doswiadczenie)
+```
+
+Odrzucamy H0 - doświadczenie nie ma rozkładu normalnego.
+
+```{r}
+ggplot(pracownicy, aes(sample = doswiadczenie)) +
+  stat_qq() +
+  stat_qq_line()
+```
+
+```{r}
+shapiro.test(rnorm(100))
+```
+
+# Test wariancji
+
+H0: wariancje doświadczenia w grupach płci są takie same
+
+H1: wariancje doświadczenia w grupach płci nie są takie same
+
+```{r}
+bartlett.test(x = pracownicy$doswiadczenie, g = pracownicy$plec)
+bartlett.test(pracownicy$doswiadczenie ~ pracownicy$plec)
+```
+
+# Porównanie dwóch średnich
+
+H0: średnie doświadczenie w grupach płci jest takie samo
+
+H1: średnie doświadczenie w grupach płci nie jest takie samo
+
+```{r}
+wilcox.test(pracownicy$doswiadczenie ~ pracownicy$plec)
+```
+
+Odrzucamy H0 - średnie doświadczenie nie jest takie samo.
+
+H0: średnie początkowe i bieżące wynagrodzenie jest takie samo
+
+H1: średnie początkowe i bieżące wynagrodzenie nie jest takie samo
+
+```{r}
+shapiro.test(pracownicy$pwynagrodzenie)
+shapiro.test(pracownicy$bwynagrodzenie)
+wilcox.test(x = pracownicy$pwynagrodzenie, 
+            y = pracownicy$bwynagrodzenie,
+            paired = TRUE)
+```
+
+Odrzucamy H0.
+
+```{r}
+shapiro.test(pracownicy$bwynagrodzenie)
+wilcox.test(pracownicy$bwynagrodzenie ~ pracownicy$plec)
+```
+
+# Porównanie trzech średnich
+
+H0: średnie doświadczenie w grupach kategorii pracownika jest takie same
+
+H1: średnie doświadczenie w grupach kategorii pracownika nie jest takie same
+
+```{r}
+kruskal.test(pracownicy$doswiadczenie ~ pracownicy$kat_pracownika)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
