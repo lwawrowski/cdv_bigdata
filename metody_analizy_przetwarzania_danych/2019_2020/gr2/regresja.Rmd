@@ -1,0 +1,132 @@
+---
+title: "Regresja"
+output: html_document
+---
+
+# Regresja prosta
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+salary <- read_xlsx("data/salary.xlsx")
+
+summary(salary)
+```
+
+```{r}
+plot(salary)
+```
+
+```{r}
+cor(salary$YearsExperience, salary$Salary)
+```
+
+Pomiędzy wynagrodzeniem a liczbą lat doświadczenia występuje silna korelacja (zależność) liniowa.
+
+```{r}
+ggplot(salary, aes(x=YearsExperience, y=Salary)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+- wynagrodzenie - zmienna objaśniana y
+- lata doświadczenia - zmienna objaśniająca x
+
+```{r}
+model <- lm(formula = Salary ~ YearsExperience, data = salary)
+summary(model)
+```
+
+- b1 = 9450 - wzrost doświadczenia pracownika o 1 rok powoduje przeciętny wzrost wynagrodzenia o 9450 $
+
+- b0 = 25792 - pracownik o doświadczeniu 0 lat uzyska wynagrodzenie 25792 $
+
+- Su = 5788 - rzeczywiste wartości wynagrodzenia różnią się od wartości modelowych średnio o +/- 5788 $
+
+- R2 = 0,957 = 95,7% - doświadczenie wyjaśnia 95,7% zmienności wynagrodzenie
+
+```{r}
+nowi_pracownicy <- data.frame(YearsExperience=c(8,9,10))
+
+predict(object = model, newdata = nowi_pracownicy)
+```
+
+pracownik o doświadczeniu 8 lat może liczyć na wynagrodzenie 101392 +/- 5788 $
+
+```{r}
+nowi_pracownicy <- nowi_pracownicy %>% 
+  mutate(salary_prog=predict(object = model, newdata = .))
+```
+
+## Zadanie
+
+```{r}
+sklep <- read_xlsx("data/sklep77.xlsx")
+
+ggplot(sklep, aes(x=liczba_klientow,
+                  y=sprzedaz)) +
+  geom_point()
+
+sklep <- sklep %>% 
+  filter(czy_otwarty == "Tak")
+
+model_sklep <- lm(sprzedaz ~ liczba_klientow, sklep)
+summary(model_sklep)
+```
+
+```{r}
+nowy_sklep <- data.frame(liczba_klientow=c(300,700,1050))
+
+predict(model_sklep, nowy_sklep)
+```
+
+# Regresja wieloraka
+
+```{r}
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+
+summary(pracownicy)
+```
+
+```{r}
+pracownicy2 <- pracownicy %>% 
+  filter(!is.na(wiek)) %>% 
+  select(-id, -data_urodz) %>% 
+  mutate(plec=as.factor(plec),
+         kat_pracownika=as.factor(kat_pracownika),
+         zwiazki=as.factor(zwiazki))
+
+summary(pracownicy2)
+```
+
+```{r}
+options(scipen = 5)
+model_pracownicy <- lm(bwynagrodzenie ~ ., pracownicy2)
+summary(model_pracownicy)
+```
+
+```{r}
+library(corrplot)
+
+korelacje <- pracownicy2 %>% 
+  select(-plec, -kat_pracownika, -zwiazki) %>% 
+  cor()
+
+corrplot(korelacje, type = "upper", method = "number")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
