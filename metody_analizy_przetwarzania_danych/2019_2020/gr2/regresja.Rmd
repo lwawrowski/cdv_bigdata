@@ -116,17 +116,77 @@ korelacje <- pracownicy2 %>%
 corrplot(korelacje, type = "upper", method = "number")
 ```
 
+```{r}
+library(olsrr)
 
+wszystkie_modele <- ols_step_all_possible(model_pracownicy)
 
+ols_step_both_aic(model_pracownicy)
+```
 
+```{r}
+wybrany_model <- lm(bwynagrodzenie ~ pwynagrodzenie + kat_pracownika + doswiadczenie + staz + edukacja + plec, data = pracownicy2)
+summary(wybrany_model)
+```
 
+```{r}
+ols_vif_tol(wybrany_model)
+```
 
+```{r}
+ols_plot_resid_hist(wybrany_model)
+```
 
+```{r}
+ols_test_normality(wybrany_model)
+```
 
+```{r}
+ols_plot_resid_qq(wybrany_model)
+```
 
+```{r}
+cook <- ols_plot_cooksd_bar(wybrany_model)
+```
 
+```{r}
+# cook$data %>% count(color)
+table(cook$data$color)
+```
 
+```{r}
+stud3 <- ols_plot_resid_stud(wybrany_model)
+```
 
+```{r}
+table(stud3$data$color)
+```
+
+```{r}
+stud2 <- ols_plot_resid_stud_fit(wybrany_model)
+```
+
+```{r}
+table(stud2$data$color)
+```
+
+```{r}
+outliers <- cook$data$obs[cook$data$color == "outlier"]
+outliers
+
+pracownicy3 <- pracownicy2[-outliers,]
+
+wybrany_model_out <- lm(bwynagrodzenie ~ pwynagrodzenie + kat_pracownika + doswiadczenie + staz + edukacja + plec, data = pracownicy3)
+summary(wybrany_model_out)
+```
+
+```{r}
+ols_plot_resid_qq(wybrany_model_out)
+```
+
+```{r}
+ols_test_normality(wybrany_model_out)
+```
 
 
 
