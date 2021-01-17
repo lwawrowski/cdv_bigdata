@@ -1,0 +1,117 @@
+---
+title: "Testy statystyczne"
+author: "Łukasz Wawrowski"
+date: "6 12 2020"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r wczytywanie, message=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Test niezależności
+
+<!-- komentarz w markdown -->
+
+H0: płeć i przynależność do związków są niezależne  
+H1: płeć i przynależność do związków są zależne 
+
+Poziom istotności: 5%
+
+```{r}
+# komentarz w R
+
+table(pracownicy$plec, pracownicy$zwiazki)
+chisq.test(table(pracownicy$plec, pracownicy$zwiazki))
+```
+
+wartość p > poziom istotności (0.1245 > 0.05) - nie ma podstaw do odrzucenia H0 - płeć i przynależność do związków są niezależne
+
+# Test proporcji
+
+H0: odsetek palaczy wśród mężczyzn i kobiet jest taki sam  
+H1: odsetek palaczy wśród mężczyzn i kobiet nie jest taki sam  
+
+Poziom istotności: 5%
+
+```{r}
+prop.test(x = c(200,250), n = c(500,600))
+```
+
+wartość p > poziomu istotności - odsetek palaczy wśród kobiet i mężczyzn nie różni się od siebie istotnie statystycznie
+
+# Test normalności
+
+H0: doświadczenie ma rozkład normalny  
+H1: doświadczenie nie ma rozkładu normalnego
+
+Poziom istotności: 5%
+
+```{r}
+shapiro.test(pracownicy$doswiadczenie)
+```
+
+wartość p < poziom istotności - odrzucamy H0 - doświadczenie nie ma rozkładu normalnego
+
+```{r}
+ggplot(pracownicy, aes(sample = doswiadczenie)) +
+  stat_qq() +
+  stat_qq_line()
+```
+
+# Test wariancji
+
+H0: zróżnicowanie bieżącego wynagrodzenia w grupach płci jest takie same  
+H1: zróżnicowanie bieżącego wynagrodzenia w grupach płci nie jest takie same
+
+Poziom istotności: 5%
+
+```{r}
+bartlett.test(pracownicy$bwynagrodzenie ~ pracownicy$plec)
+```
+
+wartość p < poziomu istotności - odrzucamy H0, zróżnicowanie w grupach płci nie jest takie same
+
+# Test t-średnich
+
+## Próba zależna 
+
+H0: średnie wynagrodzenie początkowe i bieżące są takie same  
+H1: średnie wynagrodzenie początkowe i bieżące nie są takie same  
+
+```{r}
+wilcox.test(x = pracownicy$bwynagrodzenie, y = pracownicy$pwynagrodzenie, paired = TRUE)
+```
+
+odrzucamy H0 - średnie wynagrodzenie początkowe i bieżące nie są takie same
+
+## Próba niezależna
+
+H0: średnie doświadczenie w grupach płci jest takie samo  
+H1: średnie doświadczenie w grupach płci nie jest takie samo
+
+```{r}
+wilcox.test(pracownicy$doswiadczenie ~ pracownicy$plec)
+```
+
+odrzucamy H0 - średnie doświadczenie w grupach płci nie jest takie samo
+
+# Test wielu średnich
+
+H0: średnie wynagrodzenie według kat. pracownika są takie same  
+H1: średnie wynagrodzenie według kat. pracownika nie są takie same - co najmniej jedna para jest różna
+
+```{r}
+kruskal.test(pracownicy$bwynagrodzenie ~ pracownicy$kat_pracownika)
+```
+
+odrzucamy H0
+
+```{r}
+pairwise.wilcox.test(x = pracownicy$bwynagrodzenie, g = pracownicy$kat_pracownika)
+```

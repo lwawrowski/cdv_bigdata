@@ -1,0 +1,57 @@
+---
+title: "Raport"
+author: "Łukasz Wawrowski"
+date: "6 12 2020"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r wczytywanie, message=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Podsumowanie zbioru
+
+```{r}
+summary(pracownicy)
+```
+
+## Kategoria pracownika
+
+```{r}
+pracownicy %>% 
+  count(kat_pracownika) %>% 
+  knitr::kable()
+```
+
+## Wiek pracowników
+
+```{r include=FALSE}
+sr_wiek <- round(mean(pracownicy$wiek, na.rm=T))
+```
+
+Minimalny wiek pracowników wynosi `r min(pracownicy$wiek, na.rm=TRUE)`.
+
+Średni wiek pracowników wynosi `r sr_wiek` lat.
+
+## Wykres
+
+```{r echo=FALSE}
+ggplot(pracownicy, aes(x=plec)) +
+  geom_bar()
+```
+
+## Średnie wynagrodzenie
+
+```{r echo=FALSE, message=FALSE}
+pracownicy %>% 
+  group_by(kat_pracownika) %>% 
+  summarise(sr_b=mean(bwynagrodzenie),
+            sr_p=mean(pwynagrodzenie)) %>% 
+  knitr::kable()
+```
+

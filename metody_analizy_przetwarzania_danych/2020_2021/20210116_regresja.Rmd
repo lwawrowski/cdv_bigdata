@@ -1,0 +1,212 @@
+---
+title: "Regresja"
+author: "Łukasz Wawrowski"
+date: "16 01 2021"
+output: html_document
+---
+
+# Regresja prosta
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+
+salary <- read_xlsx("data/salary.xlsx")
+
+plot(salary$YearsExperience, salary$Salary)
+```
+
+```{r}
+ggplot(data = salary, mapping = aes(x = YearsExperience, y = Salary)) +
+  geom_point() +
+  geom_smooth()
+```
+
+ - YearsExperience - zmienna objaśniająca - x
+ - Salary - zmienna objaśniana - y
+ 
+```{r}
+lm(formula = Salary ~ YearsExperience, data = salary)
+```
+
+współczynnik kierunkowy wynosi 9450: wzrost liczby lat doświadczenia o 1 powoduje średni wzrost wynagrodzenia o 9450$. 
+
+wyraz wolny wynosi 25792: pracownik o zerowym doświadczeniu może charakteryzować się wynagrodzeniem równym 25792$.
+
+Model: wynagrodzenie = 9450 * liczba lat doświadczenia + 25792
+
+```{r}
+model <- lm(formula = Salary ~ YearsExperience, data = salary)
+summary(model)
+```
+
+odchylenie standardowe składnika resztowego wynosi 5788: wartości rzeczywiste wynagrodzenia różnią się średnio od wartości modelowych wynagrodzenia o +/- 5788$.
+
+współczynnik determinacji R2 wynosi 0,957 (95,7%): liczba lat doświadczenia wyjaśnia 95,7% zmienności wynagrodzenia.
+
+Predykcja dla osób z doświadczeniem 5, 7, 8 lat.
+
+```{r}
+nowi_pracownicy <- data.frame(YearsExperience=c(5,7,8))
+
+predict(object = model, newdata = nowi_pracownicy)
+```
+
+```{r}
+nowi_pracownicy$Salary <- predict(object = model, newdata = nowi_pracownicy)
+```
+
+Oczekiwane zarobki dla osoby z liczbą lat doświadczenia równą 5 wynoszą 73042$ +/- 5788\$.
+
+Oczekiwane zarobki dla osoby z liczbą lat doświadczenia równą 7 wynoszą 91942$ +/- 5788\$.
+
+## Zadanie
+
+```{r}
+sklep77 <- read_xlsx("data/sklep77.xlsx")
+
+# 1 sposób
+sklep77 <- sklep77 %>% 
+  filter(czy_otwarty == "Tak")
+
+# 2 sposób
+sklep77 <- sklep77 %>% 
+  filter(sprzedaz > 0)
+
+ggplot(sklep77, aes(x = liczba_klientow, y = sprzedaz)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+model_sklep <- lm(sprzedaz ~ liczba_klientow, data = sklep77)
+summary(model_sklep)
+```
+
+```{r}
+sklep77_predykcja <- data.frame(liczba_klientow=c(300,700,1050)) %>% 
+  mutate(sprzedaz = predict(object = model_sklep, newdata = .))
+```
+
+# Regresja wieloraka
+
+```{r}
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+
+summary(pracownicy)
+```
+
+Przygotowanie danych do analizy - usunięcie braków i zbędnych kolumn.
+
+```{r}
+pracownicy2 <- pracownicy %>% 
+  filter(!is.na(wiek)) %>% 
+  select(-id, -data_urodz) %>% 
+  mutate(plec=as.factor(plec),
+         kat_pracownika=as.factor(kat_pracownika),
+         zwiazki=as.factor(zwiazki))
+
+summary(pracownicy2)
+```
+
+```{r}
+options(scipen = 9)
+
+model1 <- lm(formula = bwynagrodzenie ~ ., data = pracownicy2)
+summary(model1)
+```
+
+Badanie korelacji
+
+```{r}
+library(corrplot)
+
+korelacje <- pracownicy2 %>% 
+  select(-plec, -kat_pracownika, -zwiazki) %>% 
+  cor()
+
+corrplot(korelacje, method = "number", type = "upper")
+```
+
+Dobór modeli
+
+```{r}
+library(olsrr)
+
+wszystkie_modele <- ols_step_all_possible(model1)
+
+model_krokowy <- ols_step_both_aic(model1)
+model_krokowy
+```
+
+
+```{r}
+model2 <- lm(bwynagrodzenie ~ pwynagrodzenie + kat_pracownika + doswiadczenie + 
+               staz + edukacja + plec, data = pracownicy2)
+
+# auto
+
+summary(model2)
+```
+
+Analiza współliniowości
+
+```{r}
+ols_vif_tol(model2)
+```
+
+Badanie normalności reszt
+
+```{r}
+ols_plot_resid_hist(model2)
+```
+
+```{r}
+ols_test_normality(model2)
+```
+
+```{r}
+ols_plot_resid_qq(model2)
+```
+
+Wartości odstające
+
+```{r}
+cook <- ols_plot_cooksd_bar(model2)
+```
+
+```{r}
+stud <- ols_plot_resid_stud(model2)
+```
+
+Usunięcie wartości odstających
+
+```{r}
+wartosci_odstajace <- cook$data %>% 
+  filter(color == "outlier")
+
+pracownicy_out <- pracownicy2[-wartosci_odstajace$obs,]
+
+model3 <- lm(bwynagrodzenie ~ pwynagrodzenie + kat_pracownika + doswiadczenie + 
+               staz + edukacja + plec, data = pracownicy_out)
+
+summary(model3)
+```
+
+```{r}
+ols_test_normality(model3)
+```
+
+```{r}
+ols_plot_resid_qq(model3)
+```
+
+
+
+
+
+
+
+
+ 
+ 
