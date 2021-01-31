@@ -1,0 +1,194 @@
+---
+title: "Klasyfikacja"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Wczytanie danych
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+credit <- read_xlsx("data/german_credit_data.xlsx")
+
+credit <- janitor::clean_names(credit)
+
+credit <- credit %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate(job=as.factor(job),
+         installment=credit_amount/duration)
+
+summary(credit)
+```
+
+# Podział danych
+
+```{r}
+library(rsample)
+
+set.seed(125)
+credit_podzial <- validation_split(data = credit, prop = 3/4, strata = "risk")
+
+credit_train <- training(credit_podzial$splits[[1]])
+credit_test <- assessment(credit_podzial$splits[[1]])
+
+save(credit_train, credit_test, file = "data/credit_test_train.rda")
+
+load("data/credit_test_train.rda")
+
+table(credit_test$risk)
+table(credit_train$risk)
+
+```
+
+# Drzewo decyzyjne
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+m1 <- rpart(formula = risk ~ ., data = credit_train)
+
+rpart.plot(m1)
+```
+
+```{r}
+credit_risk_m1_train <- predict(m1, credit_train, type = "class")
+
+table(credit_train$risk, credit_risk_m1_train)
+
+caret::confusionMatrix(data = credit_risk_m1_train, reference = credit_train$risk,
+                       positive = "good", mode = "everything")
+```
+
+```{r}
+credit_risk_m1_test <- predict(m1, credit_test, type = "class")
+
+caret::confusionMatrix(data = credit_risk_m1_test, reference = credit_test$risk,
+                       positive = "good", mode = "everything")
+
+158*(3500*0.2)-62*(3500*0.5)
+```
+
+# Lasy losowe
+
+```{r}
+library(ranger)
+
+credit_train_missing <- VIM::kNN(credit_train, imp_var = F)
+
+m2 <- ranger(formula = risk ~ ., data = credit_train_missing, num.trees = 10)
+
+credit_risk_m2_train <- predict(m2, credit_train_missing)
+
+caret::confusionMatrix(data = credit_risk_m2_train$predictions, 
+                       reference = credit_train_missing$risk, 
+                       positive = "good", 
+                       mode = "everything")
+```
+
+```{r}
+credit_test_missing <- VIM::kNN(credit_test, imp_var = F)
+
+credit_risk_m2_test <- predict(m2, credit_test_missing)
+
+caret::confusionMatrix(data = credit_risk_m2_test$predictions, 
+                       reference = credit_test_missing$risk, 
+                       positive = "good", 
+                       mode = "everything")
+
+```
+
+# GBM
+
+```{r}
+library(h2o)
+
+h2o.init()
+
+# h2o.flow()
+
+credit_train_h2o <- as.h2o(credit_train)
+credit_test_h2o <- as.h2o(credit_test)
+
+x_var <- names(credit_train)[-10]
+
+m3 <- h2o.gbm(x = x_var, y = "risk", training_frame = credit_train_h2o, 
+              validation_frame = credit_test_h2o)
+
+m3
+
+credit_risk_m3_train <- as.data.frame(h2o.predict(m3, credit_train_h2o))
+
+caret::confusionMatrix(data = credit_risk_m3_train$predict, reference = credit_train$risk,
+                       positive = "good", mode = "everything")
+```
+
+```{r}
+credit_risk_m3_test <- as.data.frame(h2o.predict(m3, credit_test_h2o))
+
+caret::confusionMatrix(data = credit_risk_m3_test$predict, reference = credit_test$risk,
+                       positive = "good", mode = "everything")
+
+161*(3500*0.2)-46*(3500*0.5)
+```
+
+```{r}
+credit_h2o <- as.h2o(credit)
+
+m3a <- h2o.gbm(x = x_var, y = "risk", training_frame = credit_h2o, nfolds = 5)
+
+m3a
+```
+
+```{r}
+gbm_params <- list(learn_rate = seq(0.01, 0.1, 0.01),
+                    max_depth = seq(2, 10, 1),
+                    sample_rate = seq(0.5, 1.0, 0.1),
+                    col_sample_rate = seq(0.1, 1.0, 0.1),
+                    ntrees = seq(50,150,10))
+
+search_criteria <- list(strategy = "RandomDiscrete", max_models = 36, seed = 1)
+
+gbm_grid <- h2o.grid(algorithm = "gbm", 
+                      x = x_var, 
+                      y = "risk",
+                      grid_id = "gbm_grid",
+                      training_frame = credit_train_h2o,
+                      validation_frame = credit_test_h2o,
+                      seed = 1,
+                      hyper_params = gbm_params,
+                      search_criteria = search_criteria)
+
+gbm_gridperf <- h2o.getGrid(grid_id = "gbm_grid",
+                            sort_by = "auc",
+                            decreasing = TRUE)
+
+m4 <- h2o.getModel(gbm_gridperf@model_ids[[1]])
+
+m4
+```
+
+```{r}
+credit_risk_m4_test <- as.data.frame(h2o.predict(m4, credit_test_h2o))
+
+caret::confusionMatrix(data = credit_risk_m4_test$predict, reference = credit_test$risk,
+                       positive = "good", mode = "everything")
+
+162*(3500*0.2)-38*(3500*0.5)
+```
+
+```{r}
+plot(h2o.performance(m4, valid = T), type = "roc")
+```
+
+```{r}
+h2o.varimp(m4)
+```
+
+```{r}
+h2o.partialPlot(object = m4, data = credit_test_h2o, cols = "credit_amount")
+```
+

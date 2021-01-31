@@ -1,0 +1,242 @@
+---
+title: "Grupowanie"
+author: "Łukasz Wawrowski"
+date: "17 01 2021"
+output: html_document
+---
+
+# Metoda k-średnich
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+
+klienci <- read.csv("data/klienci.csv")
+klienci2 <- read_csv("data/klienci.csv")
+
+summary(klienci)
+```
+
+```{r}
+ggplot(klienci, aes(x=wiek, y=roczny_dochod)) + geom_point()
+```
+
+```{r}
+ggplot(klienci, aes(x=wiek, y=wskaznik_wydatkow)) + geom_point()
+```
+
+```{r}
+ggplot(klienci, aes(x=wskaznik_wydatkow, y=roczny_dochod)) + geom_point()
+```
+
+## Normalizacja
+
+```{r}
+klienci_z <- klienci %>% 
+  select(roczny_dochod, wskaznik_wydatkow) %>% 
+  scale()
+
+summary(klienci_z)
+# sd(klienci_z[,1])
+```
+
+```{r}
+grupowanie1 <- kmeans(x = klienci_z, centers = 5, nstart = 20)
+
+# grupowanie1
+
+klienci$grupy_km1 <- as.factor(grupowanie1$cluster)
+
+ggplot(klienci, aes(x=roczny_dochod, y=wskaznik_wydatkow, color=grupy_km1)) +
+  geom_point()
+```
+
+```{r}
+klienci %>% 
+  group_by(grupy_km1) %>% 
+  summarise(sr_wskaznik_wydatkow=mean(wskaznik_wydatkow),
+            sr_roczny_dochod=mean(roczny_dochod))
+```
+
+```{r}
+library(ClusterR)
+
+Optimal_Clusters_KMeans(data = klienci_z, max_clusters = 15, criterion = "WCSSE")
+```
+
+```{r}
+grupowanie2 <- KMeans_rcpp(data = klienci_z, clusters = 5)
+
+# grupowanie2
+
+klienci$grupy_km2 <- as.factor(grupowanie2$clusters)
+
+ggplot(klienci, aes(x=roczny_dochod, y=wskaznik_wydatkow, color=grupy_km2)) +
+  geom_point()
+```
+
+```{r}
+table(klienci$grupy_km1, klienci$grupy_km2)
+```
+
+## Zadanie samochody
+
+```{r}
+auta <- read.csv2("data/auta.csv")
+
+summary(auta)
+```
+
+```{r}
+auta_z <- auta %>% 
+  select(pojemnosc:cena) %>% 
+  scale()
+
+Optimal_Clusters_KMeans(data = auta_z, max_clusters = 15)
+```
+
+```{r}
+auta_grupy <- KMeans_rcpp(data = auta_z, clusters = 3)
+
+auta$grupy <- as.factor(auta_grupy$clusters)
+
+ggplot(auta, aes(x=pojemnosc, y=przebieg, color=grupy)) + 
+  geom_point()
+
+auta %>% 
+  group_by(grupy) %>% 
+  summarise_at(vars(pojemnosc:cena), mean)
+```
+
+```{r}
+auta_grupy2 <- kmeans(x = auta_z, centers = 3, nstart = 20)
+
+factoextra::fviz_cluster(object = auta_grupy2, data = auta[,4:7])
+```
+
+# Metoda hierchiczna
+
+```{r}
+macierz_odleglosci <- dist(x = klienci_z)
+
+# macierz_odleglosci[1:6]
+
+dendrogram <- hclust(d = macierz_odleglosci, method = "ward.D")
+
+plot(dendrogram)
+```
+
+```{r}
+grupowanie3 <- cutree(tree = dendrogram, k = 5)
+
+klienci$grupy_hc <- as.factor(grupowanie3)
+
+ggplot(klienci, aes(x=roczny_dochod, y=wskaznik_wydatkow, color=grupy_hc)) +
+  geom_point()
+```
+
+```{r}
+klienci_long <- klienci %>% 
+  pivot_longer(grupy_km2:grupy_hc)
+
+ggplot(klienci_long, aes(x=roczny_dochod, y=wskaznik_wydatkow, color=value)) +
+  geom_point() +
+  facet_wrap(~ name)
+```
+
+## Zadanie samochody
+
+```{r}
+macierz_odleglosci_auta <- dist(x = auta_z)
+
+# macierz_odleglosci[1:6]
+
+dendrogram_auta <- hclust(d = macierz_odleglosci_auta, method = "ward.D")
+
+plot(dendrogram_auta)
+```
+
+```{r}
+library(ggdendro)
+
+ggdendrogram(dendrogram_auta, rotate = T)
+```
+
+```{r}
+auta$grupy_hc <- as.factor(cutree(tree = dendrogram_auta, k = 3))
+
+table(auta$grupy, auta$grupy_hc)
+```
+
+# Braki danych
+
+```{r}
+library(palmerpenguins)
+
+data("penguins")
+
+summary(penguins)
+```
+
+## usunięcie braków danych
+
+```{r}
+12 == NA
+
+is.na(12)
+
+penguins_bezbrakow <- penguins %>% 
+  filter(complete.cases(.))
+```
+
+## metoda hot-deck
+
+```{r}
+library(VIM)
+
+penguins_hd <- hotdeck(data = penguins, domain_var = "island")
+
+summary(penguins_hd)
+```
+
+# knn
+
+```{r}
+penguins_knn <- kNN(data=penguins)
+
+summary(penguins_knn)
+```
+
+## imputacja regresyjna
+
+```{r}
+plot(penguins$flipper_length_mm, penguins$bill_length_mm)
+plot(penguins$flipper_length_mm, penguins$body_mass_g)
+
+# paradoks simpsona
+plot(penguins$flipper_length_mm, penguins$bill_depth_mm)
+cor(penguins$flipper_length_mm, penguins$bill_depth_mm, use = "complete.obs")
+
+
+ggplot(penguins, aes(x=flipper_length_mm, y=bill_depth_mm, color = species)) + geom_point()
+```
+
+```{r}
+ggplot(penguins, aes(x=sex, y=bill_length_mm )) + geom_boxplot()
+```
+
+```{r}
+ggplot(penguins, aes(x=sex, y=body_mass_g)) + geom_boxplot()
+```
+
+
+```{r}
+penguins_reg <- regressionImp(formula = sex ~ bill_length_mm + body_mass_g, 
+                              data = penguins)
+```
+
+
+
+
+
+
+
