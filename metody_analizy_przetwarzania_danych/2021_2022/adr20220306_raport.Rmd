@@ -1,0 +1,71 @@
+---
+title: "Raport"
+author: "Łukasz Wawrowski"
+date: "6 03 2022"
+output: html_document
+---
+
+# Wczytanie danych
+
+[comment]: <> (This is a comment, it will not be included)
+
+[//]: # "Comment"
+
+To nie jest komentarz.
+
+```{r wczytywanie, message=FALSE}
+# komentarz 
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Podsumowanie zbioru
+
+```{r podsumowanie}
+summary(pracownicy)
+```
+
+# Kategoria pracownika
+
+Częstość występowania kategorii pracownika.
+
+```{r}
+pracownicy %>% 
+  count(kat_pracownika) %>% 
+  knitr::kable()
+```
+
+# Wiek pracowników
+
+```{r include=FALSE}
+sr_wiek <- round(mean(pracownicy$wiek, na.rm=T))
+```
+
+Minimalny wiek pracownika wynosi `r min(pracownicy$wiek, na.rm=T)`.
+
+Średni wiek pracownik wynosi `r sr_wiek`
+
+# Wykres 
+
+```{r echo=FALSE}
+ggplot(pracownicy, aes(x=plec)) +
+  geom_bar()
+```
+
+# Średnie wynagrodzenie
+
+```{r}
+pracownicy %>% 
+  group_by(kat_pracownika) %>% 
+  summarise(srednie_pwynagrodzenie=mean(pwynagrodzenie),
+            srednie_bwynagrodzenie=mean(bwynagrodzenie)) %>% 
+  knitr::kable()
+```
+
+
+
+
+
+
