@@ -1,0 +1,150 @@
+---
+title: "Testy statystyczne"
+author: "Łukasz Wawrowski"
+date: '2022-04-09'
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r message=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Test niezależności
+
+HO: płeć i przynależność do związków są niezależne
+
+H1: płeć i przynależność do związków nie są niezależne
+
+Poziom istotności: 5%
+
+```{r}
+table(pracownicy$plec, pracownicy$zwiazki)
+chisq.test(table(pracownicy$plec, pracownicy$zwiazki))
+```
+
+wartość p > poziomu istotności -> 0.1245 > 0.05 - nie ma podstaw do odrzucenia hipotezy zerowej -> płeć i przynależność do związków są niezależne
+
+## Zadanie
+
+HO: płeć i zarobki względem mediany są niezależne
+
+H1: płeć i zarobki względem mediany nie są niezależne
+
+Poziom istotności: 5%
+
+```{r}
+pracownicy_mediana <- pracownicy %>% 
+  mutate(bwyn_mediana=ifelse(bwynagrodzenie > median(bwynagrodzenie), "> mediany", "<= mediany"))
+
+table(pracownicy_mediana$bwyn_mediana, pracownicy_mediana$plec)
+chisq.test(table(pracownicy_mediana$bwyn_mediana, pracownicy_mediana$plec))
+```
+
+wartość p < poziomu istotności -> odrzucamy H0
+
+# Test proporcji
+
+HO: palacze papierosów stanowią jednakowy odsetek wśród mężczyzn i kobiet
+
+H1: palacze papierosów nie stanowią jednakowego odsetka wśród mężczyzn i kobiet
+
+Poziom istotności: 5%
+
+```{r}
+prop.test(x = c(200, 250), n = c(500, 600))
+```
+
+wartość p > poziomu istotności (0.6183 > 0.05) -> nie mamy podstaw do odrzucenia H0 ->  palacze papierosów stanowią jednakowy odsetek wśród mężczyzn i kobiet
+
+## Zadanie
+
+```{r}
+prop.test(x = c(14,24), n= c(119,174))
+```
+
+# Test normalności
+
+H0: bieżące wynagrodzenia ma rozkład normalny
+
+H1: bieżące wynagrodzenia nie ma rozkładu normalny
+
+```{r}
+shapiro.test(pracownicy$bwynagrodzenie)
+```
+
+```{r}
+ggplot(pracownicy, aes(sample = bwynagrodzenie)) +
+  stat_qq() + 
+  stat_qq_line()
+```
+# Test średnich
+
+## Próba zależna
+
+H0: średnie wynagrdzenie początkowe i bieżące są równe
+
+H0: średnie wynagrdzenie początkowe i bieżące nie są równe
+
+```{r}
+t.test(x = pracownicy$bwynagrodzenie, y = pracownicy$pwynagrodzenie, paired = TRUE)
+```
+
+Odrzucamy H0 - średnie wynagrdzenie początkowe i bieżące nie są równe.
+
+```{r}
+wilcox.test(x = pracownicy$bwynagrodzenie, y = pracownicy$pwynagrodzenie, paired = TRUE)
+```
+## Próba niezależna
+
+H0: średnie doświadzenie w grupach płci jest takie samo
+
+H1: średnie doświadzenie w grupach płci nie jest takie samo
+
+```{r}
+shapiro.test(pracownicy$doswiadczenie)
+```
+
+```{r}
+wilcox.test(pracownicy$doswiadczenie ~ pracownicy$plec)
+wilcox.test(doswiadczenie ~ plec, data = pracownicy)
+```
+
+## Wiele prób
+
+H0: średnie wynagrodzenie wg kat. pracownika jest równe
+
+H1: średnie wynagrodzenie wg kat. pracownika nie jest równe
+
+```{r}
+anova <- aov(pracownicy$bwynagrodzenie ~ as.factor(pracownicy$kat_pracownika))
+
+summary(anova)
+```
+
+```{r}
+TukeyHSD(anova)
+```
+
+```{r}
+kruskal.test(pracownicy$bwynagrodzenie ~ pracownicy$kat_pracownika)
+```
+
+```{r}
+pairwise.wilcox.test(x = pracownicy$bwynagrodzenie, g = pracownicy$kat_pracownika)
+```
+
+
+
+
+
+
+
+
+
+
+
