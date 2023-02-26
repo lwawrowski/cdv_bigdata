@@ -1,0 +1,70 @@
+---
+title: "Raport"
+author: "Łukasz Wawrowski"
+date: "2023-02-26"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r wczytywanie, message=FALSE}
+library(tidyverse)
+library(readxl)
+
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Podsumowanie zbioru
+
+```{r podsumowanie}
+summary(pracownicy)
+```
+
+## Kategoria pracownika
+
+Częstość występowania kategorii pracownika.
+
+```{r}
+pracownicy %>% 
+  count(kat_pracownika) %>% 
+  knitr::kable()
+```
+
+## Wiek pracownika
+
+```{r include=FALSE}
+srednie_doswiadzenie <- round(mean(pracownicy$doswiadczenie))
+```
+
+Minimalny wiek pracownika wynosi `r min(pracownicy$wiek, na.rm=TRUE)`.
+
+Średni wiek pracownika wynosi `r round(mean(pracownicy$wiek, na.rm=TRUE))`.
+
+Średnie doświadczenie pracowników wynosi `r srednie_doswiadzenie` miesięcy.
+
+## Rozkład płci pracowników
+
+```{r echo=FALSE}
+pracownicy <- pracownicy %>% 
+  mutate(plec_chr=ifelse(plec==0, "mężczyzna", "kobieta"))
+
+ggplot(pracownicy, aes(x=plec_chr)) +
+  geom_bar(fill="green") +
+  xlab("Płeć") +
+  ylab("Liczebność") +
+  theme_light()
+```
+
+## Średnie wynagrodzenie w grupach kategorii
+
+```{r}
+pracownicy %>% 
+  group_by(kat_pracownika) %>% 
+  summarise(n=n(),
+            srednie_pocz=mean(pwynagrodzenie),
+            srednie_biez=mean(bwynagrodzenie)) %>% 
+  knitr::kable()
+```
+
+
+
