@@ -1,0 +1,259 @@
+---
+title: "Regresja"
+author: "Łukasz Wawrowski"
+date: "2023-04-16"
+output: html_document
+---
+
+# Wczytanie danych
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+salary <- read_xlsx("data/salary.xlsx")
+```
+
+# Wykres rozrzutu
+
+```{r}
+plot(x = salary$YearsExperience, y = salary$Salary)
+```
+
+```{r}
+ggplot(salary, aes(x=YearsExperience, y=Salary)) +
+  geom_point()
+```
+
+# Model regresji
+
+- zmienna objaśniana (zależna) - Salary - y
+- zmianna objaśniająca (niezależna) - YearsExperience - x
+
+```{r}
+lm(formula = Salary ~ YearsExperience, data = salary)
+```
+
+y = b1 * x + b0
+
+$\hat{y} = b_1x + b_0$
+
+Salary = 9450 * YearsExperience + 25792
+
+b1 - współczynnik kierunkowy wynosi 9450 dolarów - wzrost liczby lat doświadczenia o 1 rok skutkuje średnim wzrostem wynagrodzenia o 9450 dolarów
+
+b0 - wyraz wolny wynosi 25792 dolary - wynagrodzenia pracownika o 0 lat doświadczenia wynosi 25792 dolary
+
+```{r}
+model <- lm(formula = Salary ~ YearsExperience, data = salary)
+summary(model)
+```
+
+błąd resztowy wynosi 5788 dolarów - wartości rzeczywiste różnią się średnio od wartości modelowych o +/- 5788 dolarów
+
+współczynnik R2 wynosi 0.957, 95.7% - liczba lat doświadczenia wyjaśnia 95,7% zmienności wynagrodzenia
+
+```{r}
+str(summary(model))
+summary(model)$r.squared
+```
+
+współczynnik R2 wynosi `r summary(model)$r.squared`, 95.7% - liczba lat doświadczenia wyjaśnia 95,7% zmienności wynagrodzenia
+
+```{r}
+salary <- salary %>% 
+  mutate(Salary_pred=model$fitted.values)
+
+ggplot(salary, aes(x=Salary, y=Salary_pred)) +
+  geom_point() +
+  geom_abline(slope = 1)
+```
+
+## Predykcja
+
+```{r}
+nowi_pracownicy <- data.frame(YearsExperience=c(5,7,11))
+
+predict(object = model, newdata = nowi_pracownicy)
+
+nowi_pracownicy <- nowi_pracownicy %>% 
+  mutate(Salary=predict(object = model, newdata = .))
+```
+
+oczekiwane zarobki dla osoby z doświadczeniem 5 lat wynoszą 73042 dolary +/- 5788 dolarów
+
+oczekiwane zarobki dla osoby z doświadczeniem 7 lat wynoszą 91942 dolary +/- 5788 dolarów
+
+oczekiwane zarobki dla osoby z doświadczeniem 11 lat wynoszą 129742 dolary +/- 5788 dolarów
+
+## Inne miary jakości
+
+```{r}
+library(mlr3measures)
+
+rsq(salary$Salary, salary$Salary_pred)
+mae(salary$Salary, salary$Salary_pred)
+rmse(salary$Salary, salary$Salary_pred)
+```
+
+# Regresja wielu zmiennych
+
+```{r}
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+
+summary(pracownicy)
+```
+
+```{r}
+pracownicy_clean <- pracownicy %>% 
+  select(-id, -data_urodz) %>% 
+  filter(!is.na(wiek)) %>% 
+  mutate(plec=as.factor(plec),
+         kat_pracownika=as.factor(kat_pracownika),
+         zwiazki=as.factor(zwiazki))
+
+summary(pracownicy_clean)
+```
+
+```{r}
+options(scipen = 5) # wyłączenie notacji naukowej
+
+model1 <- lm(bwynagrodzenie ~ ., data = pracownicy_clean)
+summary(model1)
+```
+
+Kobiety w porówaniu do mężczyzn mają bieżące wynagrodzenie średnio niższe o 1702 zł
+
+Menedżerowie zarabiają średnio więcej o 6643 zł od specjalistów
+
+Konsultanci zarabiają średnio więcej o 11170 zł od specjalistów
+
+Wzrost początkowego wynagrodzenia o 1 zł powoduje średni wzrost bieżącego wynagrodzenia o 1,34 zł
+
+Wzrost liczby lat doświadczenia w poprzednim miejscu pracy o 1 rok powoduje średni spadek bieżącego wynagrodzenia o 16 zł.
+
+## Analiza korelacji
+
+```{r}
+library(corrplot)
+
+korelacje <- pracownicy_clean %>% 
+  select(-plec, -kat_pracownika, -zwiazki) %>% 
+  cor()
+
+corrplot(korelacje)
+```
+
+## Dobór zmiennych do modelu
+
+```{r}
+library(olsrr)
+
+wszystkie_modele <- ols_step_all_possible(model1)
+
+model_krokowy <- ols_step_both_aic(model1)
+model_krokowy
+```
+
+```{r}
+zmienne <- model_krokowy$predictors
+zmienne_plus <- paste(zmienne, collapse = "+")
+wzor <- paste("bwynagrodzenie ~", zmienne_plus)
+
+# model2 <- lm(pwynagrodzenie+kat_pracownika+doswiadczenie+staz+edukacja+plec, data = pracownicy_clean)
+# model2 <- lm(as.formula(wzor), data = pracownicy_clean)
+model2 <- lm(wzor, data = pracownicy_clean)
+summary(model2)
+```
+
+## Analiza współliniowości
+
+```{r}
+ols_vif_tol(model2)
+```
+
+## Analiza rozkładu reszt
+
+```{r}
+ols_plot_resid_qq(model2)
+```
+
+```{r}
+ols_test_normality(model2)
+```
+
+## Analiza wartości odstających
+
+```{r}
+cook <- ols_plot_cooksd_chart(model2)
+
+table(cook$data$color)
+```
+
+```{r}
+stud <- ols_plot_resid_stud(model2)
+
+table(stud$data$color)
+
+```
+
+```{r}
+pracownicy_outliers <- pracownicy_clean %>% 
+  mutate(outlier=cook$data$color) %>% 
+  filter(outlier == "normal") %>% 
+  select(-outlier)
+
+model3 <- lm(wzor, data = pracownicy_outliers)
+summary(model3)
+```
+
+```{r}
+ols_plot_resid_qq(model3)
+```
+
+```{r}
+ols_test_normality(model3)
+```
+
+```{r}
+korelacje <- pracownicy_outliers %>% 
+  select(-plec, -kat_pracownika, -zwiazki) %>% 
+  cor()
+
+corrplot(korelacje)
+```
+
+```{r}
+ols_step_both_aic(model3)
+```
+
+```{r}
+rmse(pracownicy_outliers$bwynagrodzenie, predict(model3, pracownicy_outliers))
+```
+
+# Inne metody
+
+## Drzewo decyzyjne
+
+```{r}
+library(rpart)
+
+model4 <- rpart(wzor, data = pracownicy_outliers)
+
+rpart.plot::rpart.plot(model4)
+```
+
+
+```{r}
+rmse(pracownicy_outliers$bwynagrodzenie, predict(model4, pracownicy_outliers))
+```
+
+## Las losowy
+
+```{r}
+library(ranger)
+
+model5 <- ranger(wzor, data = pracownicy_outliers)
+
+rmse(pracownicy_outliers$bwynagrodzenie, model5$predictions)
+```
