@@ -1,0 +1,212 @@
+---
+title: "Grupowanie"
+author: "Łukasz Wawrowski"
+date: "2023-05-14"
+output: html_document
+---
+
+# Wczytania danych
+
+```{r}
+library(tidyverse)
+
+klienci <- read_csv("data/klienci.csv")
+
+summary(klienci)
+```
+
+```{r}
+ggplot(klienci, aes(x=wiek, y=roczny_dochod)) +
+  geom_point()
+```
+
+```{r}
+ggplot(klienci, aes(x=wiek, y=wskaznik_wydatkow)) +
+  geom_point()
+```
+
+```{r}
+ggplot(klienci, aes(x=roczny_dochod, y=wskaznik_wydatkow)) +
+  geom_point()
+```
+
+```{r}
+klienci %>% 
+  select(wiek, roczny_dochod, wskaznik_wydatkow) %>% 
+  cor() %>% 
+  corrplot::corrplot(.)
+```
+
+# Normalizacja
+
+```{r}
+klienci_z <- klienci %>% 
+  select(wskaznik_wydatkow, roczny_dochod) %>% 
+  scale()
+```
+
+# Metoda k-średnich
+
+```{r}
+grupowanie1 <- kmeans(x = klienci_z, centers = 5)
+
+klienci$grupy1 <- as.factor(grupowanie1$cluster)
+
+ggplot(klienci, aes(x=wskaznik_wydatkow, y=roczny_dochod, color=grupy1)) +
+  geom_point()
+```
+
+```{r}
+library(ClusterR)
+
+Optimal_Clusters_KMeans(data = klienci_z, max_clusters = 10, criterion = "WCSSE")
+```
+
+```{r}
+grupowanie2 <- KMeans_rcpp(data = klienci_z, clusters = 5)
+
+klienci$grupy2 <- as.factor(grupowanie2$clusters)
+
+ggplot(klienci, aes(x=wskaznik_wydatkow, y=roczny_dochod, color=grupy2)) +
+  geom_point()
+```
+
+```{r}
+klienci %>% 
+  group_by(grupy2) %>% 
+  summarise(srednie_wydatki=mean(wskaznik_wydatkow),
+            srednie_dochody=mean(roczny_dochod))
+```
+
+## Zadanie
+
+```{r}
+auta <- read_csv2("data/auta.csv")
+summary(auta)
+```
+
+```{r}
+auta_z <- auta %>% 
+  select(pojemnosc:cena) %>% 
+  scale()
+Optimal_Clusters_KMeans(data = auta_z, max_clusters = 15, criterion = "WCSSE")
+```
+
+```{r}
+auta_grupy <- KMeans_rcpp(data = auta_z, clusters = 3)
+auta$grupy <- as.factor(auta_grupy$clusters)
+auta %>% 
+  group_by(grupy) %>% 
+  summarise_at(vars(pojemnosc:cena), mean)
+```
+
+# Metoda hierarchiczna
+
+```{r}
+macierz_odleglosci <- dist(klienci_z)
+
+dendrogram <- hclust(d = macierz_odleglosci, method = "ward.D2")
+
+plot(dendrogram)
+```
+
+```{r}
+grupowanie3 <- cutree(tree = dendrogram, k = 5)
+
+klienci$grupy3 <- as.factor(grupowanie3)
+
+ggplot(klienci, aes(x=wskaznik_wydatkow, y=roczny_dochod, color=grupy3)) +
+  geom_point()
+```
+
+```{r}
+table(klienci$grupy2, klienci$grupy3)
+```
+
+```{r}
+klienci_long <- klienci %>% 
+  pivot_longer(grupy2:grupy3)
+
+ggplot(klienci_long, aes(x=wskaznik_wydatkow, y=roczny_dochod, color=value)) +
+  geom_point() +
+  facet_wrap(~name)
+```
+
+## Zadanie
+
+```{r}
+rownames(auta_z) <- auta$model
+macierz_odleglosci_auta <- dist(x = auta_z)
+dendrogram_auta <- hclust(d = macierz_odleglosci_auta, method = "ward.D2")
+plot(dendrogram_auta)
+```
+
+```{r}
+auta$grupy_hc <- as.factor(cutree(tree = dendrogram_auta, k = 3))
+table(auta$grupy, auta$grupy_hc)
+```
+
+```{r}
+library(ggdendro)
+
+ggdendrogram(data = dendrogram_auta, rotate = T)
+```
+
+# Braki danych
+
+```{r}
+library(palmerpenguins)
+
+data("penguins")
+
+summary(penguins)
+```
+
+## hot-deck
+
+```{r}
+library(VIM)
+
+penguins_hd <- hotdeck(data = penguins, domain_var = "species", imp_var = FALSE)
+```
+
+## KNN
+
+```{r}
+penguins_knn <- kNN(data = penguins)
+```
+
+## imputacja regresyjna
+
+```{r}
+penguins_reg <- regressionImp(formula = sex ~ body_mass_g + flipper_length_mm, data = penguins)
+
+penguins_reg2 <- regressionImp(formula = sex ~ species + island, data = penguins)
+```
+
+# paradoks Simpsona
+
+```{r}
+ggplot(penguins, aes(x=flipper_length_mm, y=bill_depth_mm, color=species)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+cor(penguins$flipper_length_mm, penguins$bill_depth_mm, use="complete.obs")
+```
+
+# Redukcja wymiarów
+
+```{r}
+library(umap)
+
+auta_umap <- umap(auta_z)
+
+auta_umap_grupy <- as.data.frame(auta_umap$layout)
+auta_umap_grupy$grupy <- auta$grupy
+
+ggplot(auta_umap_grupy, aes(x=V1, y=V2, color=grupy)) +
+  geom_point()
+```
+
