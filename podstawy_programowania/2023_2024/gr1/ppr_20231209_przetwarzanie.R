@@ -143,6 +143,7 @@ wybory %>%
 
 # zadanie
 
+# 1 sposób
 wybory <- wybory %>% 
   mutate(bs_proc=bs/liczba_kart_waznych*100,
          td_proc=td/liczba_kart_waznych*100,
@@ -153,14 +154,18 @@ wybory <- wybory %>%
 
 summary(wybory)
 
-# wybory <- wybory %>% 
-#   mutate_at(vars(bs:ko), funs(./liczba_kart_waznych*100))
+# 2 sposób
+wynik_procentowy <- function(x, y) x/y*100
+wybory <- wybory %>%
+  mutate_at(vars(bs:ko), list(proc=~wynik_procentowy(.x, liczba_kart_waznych)))
 
 # Gdzie była największa różnica pomiędzy wybranymi partiami?
 wybory <- wybory %>% 
   mutate(roznica_ko_td=abs(ko_proc-td_proc))
 
 summary(wybory$roznica_ko_td)
+
+
 
 
 
