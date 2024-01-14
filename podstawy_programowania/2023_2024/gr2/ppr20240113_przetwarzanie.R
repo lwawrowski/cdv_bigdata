@@ -121,6 +121,104 @@ wybory <- wybory %>%
 
 summary(wybory$frekwencja)
 
+# Ile obwodów głosowania miało frekwencję powyżej 80%?
+
+frekwencja80 <- wybory %>% 
+  filter(frekwencja > 80)
+
+wybory <- wybory %>% 
+  rename(bs=komitet_wyborczy_bezpartyjni_samorzadowcy,
+         td=koalicyjny_komitet_wyborczy_trzecia_droga_polska_2050_szymona_holowni_polskie_stronnictwo_ludowe,
+         nl=komitet_wyborczy_nowa_lewica,
+         pis=komitet_wyborczy_prawo_i_sprawiedliwosc,
+         konf=komitet_wyborczy_konfederacja_wolnosc_i_niepodleglosc,
+         ko=koalicyjny_komitet_wyborczy_koalicja_obywatelska_po_n_ipl_zieloni)
+
+# sposób 1
+wybory <- wybory %>% 
+  mutate(bs_proc=bs/liczba_kart_waznych,
+         td_proc=td/liczba_kart_waznych,
+         nl_proc=nl/liczba_kart_waznych,
+         pis_proc=pis/liczba_kart_waznych,
+         konf_proc=konf/liczba_kart_waznych,
+         ko_proc=ko/liczba_kart_waznych)
+
+# sposób 2
+wybory <- wybory %>% 
+  mutate_at(.vars = vars(bs:ko), .funs = list(proc = ~./liczba_kart_waznych*100))
+
+# Gdzie była największa różnica pomiędzy wybranymi partiami?
+
+wybory_roznica <- wybory %>% 
+  select(siedziba, td_proc, ko_proc) %>% 
+  mutate(roznica=td_proc-ko_proc)
+
+# podsumowania ----
+
+wybory %>% 
+  summarise(srednia=mean(liczba_wyborcow_uprawnionych_do_glosowania, na.rm = TRUE),
+            mediana=median(liczba_wyborcow_uprawnionych_do_glosowania, na.rm = TRUE),
+            liczebnosc=n())
+
+summary(wybory$liczba_wyborcow_uprawnionych_do_glosowania)
+
+wybory %>% 
+  summarise_at(vars(liczba_wyborcow_uprawnionych_do_glosowania),
+               list(srednia = mean, mediana = median), na.rm = TRUE)
+
+komitety_stat <- wybory %>% 
+  summarise_at(vars(bs_proc:ko_proc),
+               list(srednia = mean, mediana = median), na.rm = TRUE)
+
+# zadanie
+
+wybory %>% 
+  summarise(srednia=mean(frekwencja, na.rm = TRUE),
+            mediana=median(frekwencja, na.rm = TRUE),
+            odchylenie=sd(frekwencja, na.rm = TRUE))
+
+wybory %>% 
+  summarise_at(vars(frekwencja),
+               list(srednia = mean, mediana = median, odchylenie = sd), na.rm = TRUE)
+
+# grupowanie ----
+
+liczba_wyborcow_powiat <- wybory %>% 
+  group_by(powiat) %>% 
+  summarise(srednia=mean(liczba_wyborcow_uprawnionych_do_glosowania, na.rm=TRUE))
+
+koperty_woj <- wybory %>% 
+  group_by(wojewodztwo, liczba_kopert_zwrotnych_w_ktorych_oswiadczenie_nie_bylo_podpisane) %>% 
+  summarise(liczba=n())
+
+woj <- wybory %>% 
+  group_by(wojewodztwo) %>% 
+  summarise(liczba=n())
+
+woj2 <- wybory %>% 
+  count(wojewodztwo) %>% 
+  arrange(desc(n))
+
+# Jaka była średnia frekwencja w województwach?
+
+wybory %>% 
+  group_by(wojewodztwo) %>% 
+  summarise(mean(frekwencja))
+
+# W jakich miastach za granicą utworzono najwięcej obwodów głosowania?
+
+zagranica <- wybory %>% 
+  filter(powiat == "zagranica") %>% 
+  count(gmina) %>% 
+  arrange(desc(n)) %>% 
+  filter(n > 2)
+
+
+
+
+
+
+
 
 
 
