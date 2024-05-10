@@ -1,0 +1,188 @@
+---
+title: "Testy statystyczne"
+author: "Łukasz"
+toc: true
+lang: pl
+self-contained: true
+format: html
+---
+
+# Wczytanie danych
+
+Wczytujemy dane o **pracownikach**
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(readxl)
+
+dane <- read_xlsx("data/pracownicy.xlsx")
+```
+
+# Test niezależności
+
+H0: płeć i przynależność do związków są niezależne
+
+H1: płeć i przynależność do związków nie są niezależne
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+dane <- dane %>% 
+  mutate(plec=ifelse(plec==0, "m", "k"),
+         zwiazki=ifelse(zwiazki==0, "nie", "tak"))
+
+table(dane$plec, dane$zwiazki)
+
+chisq.test(table(dane$plec, dane$zwiazki))
+```
+
+Wartość p > poziomu istotności - nie mamy podstaw do odrzucenia H0. 
+
+Płeć i przynależność do związków są niezależne.
+
+# Test proporcji
+
+H0: odsetek palaczy wśród kobiet i mężczyzn jest taki sam
+
+H1: odsetek palaczy wśród kobiet i mężczyzn nie jest taki sam
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+prop.test(x = c(200,250), n = c(500,600))
+```
+
+Wartość p > poziomu istotności - nie mamy podstaw do odrzucenia H0. 
+
+Odsetek palaczy wśród kobiet i mężczyzn jest taki sam.
+
+# Test normalności
+
+H0: bieżące wynagrodzenie ma rozkład normalny
+
+H1: bieżące wynagrodzenie nie ma rozkładu normalnego
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$bwynagrodzenie)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+Bieżące wynagrodzenie nie ma rozkładu normalnego.
+
+# Wykres kwantyl-kwantyl
+
+```{r}
+ggplot(dane, aes(sample = bwynagrodzenie)) +
+  stat_qq() + 
+  stat_qq_line()
+```
+
+# Test dla dwóch prób
+
+## Próby zależne
+
+H0: początkowe wynagrodzenie i bieżące wynagrodzenie są sobie równe
+
+H1: początkowe wynagrodzenie i bieżące wynagrodzenie nie są sobie równe
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$bwynagrodzenie)
+shapiro.test(dane$pwynagrodzenie)
+```
+
+```{r}
+wilcox.test(x = dane$pwynagrodzenie, y = dane$bwynagrodzenie, paired = TRUE)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+Początkowe wynagrodzenie i bieżące wynagrodzenie nie są sobie równe.
+
+```{r}
+t.test(x = dane$pwynagrodzenie, y = dane$bwynagrodzenie, paired = TRUE)
+```
+
+## Próby niezależne
+
+H0: doświadczenie w grupach płci jest takie same
+
+H1: doświadczenie w grupach płci nie jest takie same
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$doswiadczenie)
+```
+
+```{r}
+wilcox.test(doswiadczenie ~ plec, data = dane)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+Doświadczenie w grupach płci nie jest takie same.
+
+```{r}
+t.test(doswiadczenie ~ plec, data = dane)
+```
+
+### Zadanie
+
+H0: pwynagrodzenie w grupach płci jest takie same
+
+H1: pwynagrodzenie w grupach płci nie jest takie same
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$pwynagrodzenie)
+```
+
+```{r}
+wilcox.test(pwynagrodzenie ~ plec, data = dane)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+# Test dla wielu prób
+
+H0: wynagrodzenia pracowników są takie same na różnych stanowiskach
+
+H1: istnieje co najmniej jedna para stanowisk na których wynagrodzenia pracowników się różnią
+
+```{r}
+anova <- aov(pwynagrodzenie ~ as.factor(kat_pracownika), data = dane)
+summary(anova)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+```{r}
+TukeyHSD(anova)
+```
+
+```{r}
+kruskal.test(pwynagrodzenie ~ as.factor(kat_pracownika), data = dane)
+```
+
+Wartość p < poziomu istotności - mamy podstawy do odrzucenia H0.
+
+```{r}
+pairwise.wilcox.test(x = dane$pwynagrodzenie, g = dane$kat_pracownika)
+```
+
+```{r}
+ggplot(dane, aes(x=pwynagrodzenie, y=as.factor(kat_pracownika))) +
+  geom_boxplot()
+```
+
+
+
+
+

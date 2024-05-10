@@ -1,0 +1,108 @@
+---
+title: "Klasyfikacja"
+format: html
+---
+
+# Wczytanie danych
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+credit <- read_xlsx("data/german_credit_data.xlsx")
+
+dataMaid::makeDataReport(data = credit, output = "html", replace = T)
+
+credit <- credit %>% 
+  janitor::clean_names()
+
+credit <- VIM::kNN(credit, imp_var = F)
+
+credit <- credit %>% 
+  mutate(job=as.factor(job))
+
+credit <- credit %>% 
+  mutate_if(is.character, as.factor)
+
+credit <- credit %>% 
+  mutate(installment=credit_amount/duration)
+
+```
+
+Wszystko w jednym pipe
+
+```{r}
+credit <- credit %>%
+  janitor::clean_names() %>%
+  VIM::kNN(., imp_var = F) %>%
+  mutate(job=as.factor(job)) %>%
+  mutate_if(is.character, as.factor) %>%
+  mutate(installment=credit_amount/duration)
+
+```
+
+# Podział danych
+
+```{r}
+library(rsample)
+
+credit_split <- initial_split(data = credit, strata = "risk")
+
+credit_train <- training(credit_split)
+credit_test <- testing(credit_split)
+```
+
+# Drzewo decyzyjne
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+m1 <- rpart(risk ~ ., data = credit_train)
+rpart.plot(m1)
+```
+
+```{r}
+credit_train_m1 <- predict(m1, newdata = credit_train, type="class")
+
+confusionMatrix(data = credit_train_m1, reference = credit_train$risk,
+                mode = "everything", positive = "good")
+```
+
+```{r}
+credit_test_m1 <- predict(m1, newdata = credit_test, type="class")
+
+confusionMatrix(data = credit_test_m1, reference = credit_test$risk,
+                mode = "everything", positive = "good")
+```
+
+# Lasy losowe
+
+```{r}
+library(ranger)
+
+m2 <- ranger(risk ~ ., data=credit)
+
+credit_train_m2 <- predict(m2, data = credit_train, type="response")
+
+confusionMatrix(data = credit_train_m2$predictions, reference = credit_train$risk,
+                mode = "everything", positive = "good")
+```
+```{r}
+credit_test_m2 <- predict(m2, data = credit_test, type="response")
+
+confusionMatrix(data = credit_test_m2$predictions, reference = credit_test$risk,
+                mode = "everything", positive = "good")
+```
+
+```{r}
+m3 <- ranger(risk ~ ., data=credit, probability = TRUE, importance = "impurity")
+
+m3$variable.importance
+```
+
+```{r}
+credit_test_m3 <- predict(m3, data = credit_test, type="response")
+```
+

@@ -1,0 +1,79 @@
+---
+title: "Raport pracowniczy"
+author: "Łukasz"
+toc: true
+lang: pl
+self-contained: true
+format: 
+  html:
+    df-print: paged
+---
+
+# Wczytanie danych
+
+Wczytujemy dane o **pracownikach**
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(readxl)
+
+dane <- read_xlsx("data/pracownicy.xlsx")
+
+summary(dane)
+```
+
+Przegląd wszystkich danych
+
+```{r}
+dane
+```
+
+# Kategoria pracownika
+
+```{r}
+#| label: tbl-kat
+#| fig-cap: "Częstość występowania kategorii pracownika"
+
+dane %>% 
+  count(kat_pracownika) %>% 
+  knitr::kable()
+```
+
+@tbl-kat zawiera częstość występowania kategorii pracownika.
+
+# Wiek pracownika
+
+Minimalny wiek pracownika wynosi `r min(dane$wiek, na.rm=T)` lata.
+
+# EDA
+
+```{r}
+library(dataMaid)
+
+makeDataReport(data = dane, output = "html", replace = TRUE)
+```
+
+Zastąpienie braku danych przez medianę
+
+```{r}
+dane_imp <- dane %>% 
+  mutate(wiek=replace_na(wiek, median(wiek, na.rm=T)))
+```
+
+Metoda hot-deck
+
+```{r}
+library(VIM)
+
+dane_imp <- hotdeck(dane, imp_var = F)
+```
+
+Metoda KNN
+
+```{r}
+dane_imp <- kNN(dane, imp_var = F, k = 5)
+```
+
+
+
