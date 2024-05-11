@@ -1,0 +1,84 @@
+---
+title: "Testy statystyczne"
+format: html
+---
+
+# Wczytanie danych
+
+Wczytujemy dane o *pracownikach*
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(readxl)
+
+dane <- read_xlsx("data/pracownicy.xlsx")
+
+summary(dane)
+```
+
+# Test niezależności
+
+H0: płeć i przynależność do związków są niezależne
+
+H1: płeć i przynależność do związków nie są niezależne
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+dane <- dane %>% 
+  mutate(plec=ifelse(plec==0, 'm', 'k'),
+         zwiazki=ifelse(zwiazki==0, 'nie', 'tak'))
+
+table(dane$plec, dane$zwiazki)
+
+chisq.test(table(dane$plec, dane$zwiazki))
+```
+
+Wartość p > poziom istotności - nie mamy podstaw do odrzucenia H0
+
+Płeć i przynależność do związków są niezależne
+
+# Test proporcji
+
+Wysunięto przypuszczenie, że palacze papierosów stanowią jednakowy odsetek wśród mężczyzn i kobiet. W celu sprawdzenia tej hipotezy wylosowano 500 mężczyzn i 600 kobiet. Okazało się, że wśród mężczyzn było 200 palaczy, a wśród kobiet 250.
+
+H0: odsetek palaczy wśród kobiet i mężczyzn jest taki sam
+
+H1: odsetek palaczy wśród kobiet i mężczyzn nie jest taki sam
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+prop.test(x = c(200, 250), n = c(500, 600), conf.level = 0.95)
+```
+
+Wartość p > poziom istotności - nie mamy podstaw do odrzucenia H0
+
+odsetek palaczy wśród kobiet i mężczyzn jest taki sam
+
+# Test normalności
+
+H0: rozkład bieżącego wynagrodzenia ma rozkład normalny
+
+H1: rozkład bieżącego wynagrodzenia nie ma rozkładu normalnego
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$bwynagrodzenie)
+```
+
+Wartość p < poziom istotności - mamy podstawy do odrzucenia H0
+
+rozkład bieżącego wynagrodzenia nie ma rozkładu normalnego
+
+## Wykres kwantyl-kwantyl
+
+```{r}
+ggplot(dane, aes(sample = bwynagrodzenie)) +
+  stat_qq() + 
+  stat_qq_line()
+```
+
+

@@ -1,0 +1,93 @@
+---
+title: "Pierwszy raport"
+author: "Łukasz"
+format: 
+  html:
+    df-print: paged
+lang: pl
+self-contained: true
+toc: true
+execute: 
+  warning: false
+---
+
+# Wczytanie danych
+
+Wczytujemy dane o *pracownikach*
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(readxl)
+
+dane <- read_xlsx("data/pracownicy.xlsx")
+
+summary(dane)
+```
+
+# Kategoria pracownika
+
+```{r}
+dane %>% 
+  count(kat_pracownika) %>% 
+  knitr::kable()
+```
+
+Minimalny wiek pracownika wynosi `r min(dane$wiek, na.rm=T)` lata.
+
+# EDA
+
+```{r}
+library(dataMaid)
+
+makeDataReport(dane, output = "html", replace = T)
+```
+
+# Braki danych
+
+## Zastępowanie wartości przez medianę
+
+```{r}
+dane_imp <- dane %>% 
+  mutate(wiek=replace_na(wiek, median(wiek, na.rm=T)))
+```
+
+## Metoda hot-deck
+
+```{r}
+library(VIM)
+
+dane_imp_hd <- hotdeck(dane, imp_var = FALSE)
+```
+
+## Metoda najbliższych sąsiadów
+
+```{r}
+dane_imp_knn <- kNN(dane, imp_var = FALSE)
+
+dane_imp_knn
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
