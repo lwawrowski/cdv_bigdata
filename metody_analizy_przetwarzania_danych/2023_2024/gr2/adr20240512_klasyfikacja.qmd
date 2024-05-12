@@ -1,0 +1,120 @@
+---
+title: "Klasyfikacja"
+format: html
+---
+
+# Wczytanie danych
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+credit <- read_xlsx("data/german_credit_data.xlsx")
+
+# dataMaid::makeDataReport(data = credit, output = "html", replace = TRUE)
+
+credit <- credit %>% 
+  janitor::clean_names()
+
+credit <- VIM::kNN(credit, imp_var = FALSE)
+
+credit <- credit %>% 
+  mutate(job = case_when(
+    job == 0 ~ "unskilled and non-resident",
+    job == 1 ~ "unskilled and resident", 
+    job == 2 ~ "skilled", 
+    job == 3 ~ "highly skilled"
+  ))
+
+credit <- credit %>% 
+  mutate_if(is.character, as.factor)
+
+credit <- credit %>% 
+  mutate(installment=credit_amount/duration)
+```
+
+Wszystko razem
+
+```{r}
+credit <- read_xlsx("data/german_credit_data.xlsx") %>% 
+  janitor::clean_names() %>% 
+  VIM::kNN(., imp_var = FALSE) %>% 
+  mutate(job = case_when(
+    job == 0 ~ "unskilled and non-resident",
+    job == 1 ~ "unskilled and resident", 
+    job == 2 ~ "skilled", 
+    job == 3 ~ "highly skilled"
+  )) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate(installment=credit_amount/duration)
+```
+
+# Podział danych
+
+```{r}
+library(rsample)
+
+credit_split <- initial_split(data = credit, strata = "risk")
+
+credit_train <- training(credit_split)
+credit_test <- testing(credit_split)
+```
+
+# Drzewo decyzyjne
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+m1 <- rpart(formula = risk ~ ., data = credit)
+rpart.plot(m1)
+```
+
+```{r}
+credit_train_m1 <- predict(m1, credit_train, type="class")
+
+confusionMatrix(data = credit_train_m1, reference = credit_train$risk, 
+                positive = "good", mode = "everything")
+```
+
+```{r}
+credit_test_m1 <- predict(m1, credit_test, type="class")
+
+confusionMatrix(data = credit_test_m1, reference = credit_test$risk, 
+                positive = "good", mode = "everything")
+```
+
+# Lasy losowe
+
+```{r}
+library(ranger)
+
+m2 <- ranger(risk ~ ., credit_train)
+
+credit_train_m2 <- predict(m2, credit_train)
+
+confusionMatrix(data = credit_train_m2$predictions, reference = credit_train$risk, 
+                positive = "good", mode = "everything")
+```
+
+```{r}
+credit_test_m2 <- predict(m2, credit_test)
+
+confusionMatrix(data = credit_test_m2$predictions, reference = credit_test$risk, 
+                positive = "good", mode = "everything")
+```
+```{r}
+m3 <- ranger(risk ~., data = credit_train, probability = TRUE)
+
+credit_train_m3 <- predict(m3, credit_train)
+```
+
+## Ważność cech
+
+```{r}
+m4 <- ranger(risk ~., data = credit_train, probability = TRUE, importance = "impurity")
+
+m4$variable.importance
+```
+

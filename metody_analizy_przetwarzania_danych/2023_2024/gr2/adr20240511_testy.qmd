@@ -81,4 +81,97 @@ ggplot(dane, aes(sample = bwynagrodzenie)) +
   stat_qq_line()
 ```
 
+# Testy dla dwóch prób
+
+## Próby zależne
+
+H0: początkowe i bieżące wynagrodzenie są sobie równe
+
+H1: początkowe i bieżące wynagrodzenie nie są sobie równe
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$pwynagrodzenie)
+```
+
+```{r}
+wilcox.test(x = dane$pwynagrodzenie, y = dane$bwynagrodzenie, paired = TRUE)
+```
+
+Wartość p < poziom istotności - mamy podstawy do odrzucenia H0
+
+początkowe i bieżące wynagrodzenie nie są sobie równe
+
+```{r}
+t.test(x = dane$pwynagrodzenie, y = dane$bwynagrodzenie, paired = TRUE)
+```
+
+## Próby niezależne
+
+H0: doświadczenie w grupach płci jest takie samo
+
+H1: doświadczenie w grupach płci nie jest takie samo
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+shapiro.test(dane$doswiadczenie)
+```
+
+doświadczenie nie ma rozkładu normalnego
+
+```{r}
+wilcox.test(doswiadczenie ~ plec, data = dane)
+```
+
+Wartość p < poziom istotności - mamy podstawy do odrzucenia H0
+
+doświadczenie w grupach płci nie jest takie samo
+
+```{r}
+t.test(doswiadczenie ~ plec, data = dane)
+```
+
+### Zadanie
+
+Czy wynagrodzenie różni się w zależności od płci.
+
+```{r}
+wilcox.test(bwynagrodzenie ~ plec, data = dane)
+```
+
+# Test dla wielu prób
+
+H0: wynagrodzenia pracowników są takie same na różnych stanowiskach
+
+H1: istnieje co najmniej jedna para stanowisk o różnych wynagrodzeniach
+
+Poziom istotności: 5% (0.05)
+
+```{r}
+anova <- aov(bwynagrodzenie ~ as.factor(kat_pracownika), data = dane)
+summary(anova)
+```
+
+Wartość p < poziom istotności - mamy podstawy do odrzucenia H0
+
+```{r}
+TukeyHSD(anova)
+```
+
+```{r}
+kruskal.test(bwynagrodzenie ~ as.factor(kat_pracownika), data = dane)
+```
+
+Wartość p < poziom istotności - mamy podstawy do odrzucenia H0
+
+```{r}
+pairwise.wilcox.test(x = dane$bwynagrodzenie, g = as.factor(dane$kat_pracownika))
+```
+
+```{r}
+ggplot(data = dane, aes(x=bwynagrodzenie, y=as.factor(kat_pracownika))) +
+  geom_boxplot()
+```
 
