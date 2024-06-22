@@ -1,0 +1,240 @@
+---
+title: "Regresja"
+format: html
+---
+
+# Wczytanie danych
+
+Pierwszym krokiem analizy jest wczytanie danych ze zbioru http://www.wawrowski.edu.pl/data/salary.xlsx
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+salary <- read_xlsx("data/salary.xlsx")
+```
+
+# Wykres rozrzutu
+
+```{r}
+plot(salary$YearsExperience, salary$Salary)
+```
+
+```{r}
+ggplot(salary, aes(x=YearsExperience, y=Salary)) +
+  geom_point()
+```
+
+# Regresja prosta
+
+zmienna objaśniana (zależna, y): Salary
+
+zmienna objaśniająca (niezależna, x): YearsExperience
+
+```{r}
+lm(formula = Salary ~ YearsExperience, data = salary)
+```
+
+y = b1 * x + b0
+
+Salary = b1 * YearsExperience + b0
+
+Salary = 9450 * YearsExperience + 25792
+
+współczynnik kierunkowy b1 = 9450: wzrost liczby lat doświadczenia o 1 rok skutkuje wzrostem wynagrodzenia średnio o 9450 dolarów
+
+wyraz wolny b0 = 25792: wynagrodzenia pracownika, który ma 0 lat doświadczenia wyniesie 25792 dolary
+
+```{r}
+model <- lm(formula = Salary ~ YearsExperience, data = salary)
+summary(model)
+```
+
+błąd resztowy wynosi 5788: wartości rzeczywiste różnią się od wartości z modelu średnio o +/- 5788 dolarów
+
+współczynnik R2 wynosi 0.957 ~ 95,7%: liczba lat doświadczenia wyjaśnia 95,7 zmienności wynagrodzenia
+
+## Predykcja
+
+```{r}
+salary <- salary %>% 
+  mutate(salary_pred=as.numeric(model$fitted.values))
+```
+
+
+```{r}
+nowi_pracownicy <- data.frame(YearsExperience=c(5,7,10))
+
+predict(model, nowi_pracownicy)
+
+nowi_pracownicy <- nowi_pracownicy %>% 
+  mutate(salary_pred=predict(model, .))
+```
+
+pracownik o 5 latach doświadczenie może oczekiwać wynagrodzenia 73042 +/- 5788 dolarów
+
+pracownik o 7 latach doświadczenie może oczekiwać wynagrodzenia 91942 +/- 5788 dolarów
+
+pracownik o 10 latach doświadczenie może oczekiwać wynagrodzenia 120292 +/- 5788 dolarów
+
+# Regresja wieloraka
+
+```{r}
+pracownicy <- read_xlsx("data/pracownicy.xlsx")
+
+summary(pracownicy)
+```
+
+```{r}
+pracownicy_model <- pracownicy %>% 
+  select(-id, -data_urodz) %>% 
+  filter(!is.na(wiek)) %>% 
+  mutate(plec=as.factor(plec),
+         kat_pracownika=as.factor(kat_pracownika),
+         zwiazki=as.factor(zwiazki))
+
+summary(pracownicy_model)
+  
+```
+
+zmienna objaśniana (y): bwynagrodzenie
+
+zmienne objaśniające (x): wszystkie pozostałe
+
+```{r}
+options(scipen = 10)
+
+model1 <- lm(bwynagrodzenie ~ ., pracownicy_model)
+
+summary(model1)
+```
+
+Kobiety w porównaniu do mężczyzn mają bieżące wynagrodzenie średnio niższe o 1702 zł
+
+Menadżer w porównaniu do specjalisty ma bieżące wynagrodzenie średnio wyższe o 6643 zł
+
+Konsultant w porównaniu do specjalisty ma bieżące wynagrodzenie średnio wyższe o 11169 zł
+
+Wzrost początkowego wynagrodzenia o 1 zł wpływa na wzrost bieżącego wynagrodzenia średnio o 1,34 zł
+
+Wzrost miesięcy doświadczenia o 1 miesiąc wpływa na spadek bieżącego wynagrodzenia średnio o 15,77 zł
+
+CETERIS PARIBUS
+
+# Analiza korelacji
+
+```{r}
+library(corrplot)
+
+korelacje <- pracownicy_model %>% 
+  select_if(is.numeric) %>% 
+  cor()
+  
+corrplot(korelacje, method = "number")  
+```
+
+# Dobór cech do modelu
+
+```{r}
+library(olsrr)
+
+wszystkie_modele <- ols_step_all_possible(model1)
+wszystkie_modele_df <- wszystkie_modele$result
+
+model_krokowy <- ols_step_both_aic(model1)
+
+model_krokowy$metrics
+```
+
+```{r}
+model2 <- model_krokowy$model
+summary(model2)
+```
+
+# Badanie współliniowości
+
+```{r}
+ols_vif_tol(model2)
+```
+
+# Wartości odstające
+
+```{r}
+cook <- ols_plot_cooksd_bar(model2)
+```
+
+```{r}
+cook$data %>% 
+  count(color)
+```
+
+```{r}
+stud <- ols_plot_resid_stud(model2)
+```
+
+```{r}
+stud$data %>% 
+  count(color)
+```
+
+```{r}
+pracownicy_outlier <- pracownicy_model %>% 
+  mutate(outlier=cook$data$color) %>% 
+  filter(outlier=="normal") %>% 
+  select(-outlier, -wiek, -zwiazki)
+
+model3 <- lm(bwynagrodzenie ~ ., pracownicy_outlier)
+summary(model3)
+```
+
+# Normalność rozkładu reszt
+
+```{r}
+ols_plot_resid_qq(model3)
+```
+
+```{r}
+ols_test_normality(model3)
+```
+
+```{r}
+plot(pracownicy_outlier$bwynagrodzenie, model3$fitted.values)
+```
+
+```{r}
+cor(pracownicy_outlier$bwynagrodzenie, model3$fitted.values)
+```
+
+```{r}
+mlr3measures::mae(pracownicy_outlier$bwynagrodzenie, model3$fitted.values)
+```
+
+# Drzewo decyzyjne
+
+```{r}
+library(rpart)
+
+model4 <- rpart(bwynagrodzenie ~ ., pracownicy_outlier)
+
+rpart.plot::rpart.plot(model4)
+```
+
+```{r}
+model4_pred <- predict(model4, pracownicy_outlier)
+
+plot(pracownicy_outlier$bwynagrodzenie, model4_pred)
+```
+
+```{r}
+table(model4_pred)
+```
+
+```{r}
+mlr3measures::rsq(pracownicy_outlier$bwynagrodzenie, model4_pred)
+```
+
+```{r}
+mlr3measures::mae(pracownicy_outlier$bwynagrodzenie, model4_pred)
+```
+
+
