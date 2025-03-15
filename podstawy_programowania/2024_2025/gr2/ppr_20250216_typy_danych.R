@@ -6,7 +6,7 @@
 
 6/2*(2+1)
 
-Sys.sleep(time = 90)
+# Sys.sleep(time = 90)
 
 sqrt(x = 100)
 sqrt(100)
@@ -44,7 +44,7 @@ month.abb
 # wektory -----------------------------------------------------------------
 
 samochod <- c(TRUE, FALSE, TRUE, TRUE, FALSE)
-samochod <- c(True, False) # źle
+# samochod <- c(True, False) # źle
 samochod <- c(T, F, T, T, F)
 samochod
 
@@ -99,3 +99,37 @@ oceny_nowe2 <- c(oceny_nowe2, 6)
 
 oceny_nowe2[4:6]
 oceny_nowe2[c(1,4:6)]
+
+# macierz -----------------------------------------------------------------
+
+macierz <- matrix(data = 1:9, nrow = 3, ncol = 3, byrow = TRUE)
+macierz
+
+macierz[2,3]
+macierz[1,]
+macierz[,1]
+
+# ramka danych ------------------------------------------------------------
+
+df <- data.frame(plec=c("m", "k", "k", "m", "k", "m", "m", "m"),
+                 wzrost=c(173, 170, 163, 178, 169, 180, 175, NA),
+                 wydatki=c(1200, 2340, 1900, 890, 1010, 3099, 1478, 2030),
+                 pali=c(T, F, F, F, T, F, NA, T))
+
+View(df)
+
+summary(df)
+
+mean(df[,2], na.rm = TRUE)
+mean(df[,'wzrost'], na.rm = T)
+mean(df$wzrost, na.rm = T)
+
+# lista -------------------------------------------------------------------
+
+roznosci <- list(wektor = ksiazki, zbior = df, liczba = 2025)
+
+roznosci$wektor
+roznosci$zbior$wydatki
+
+roznosci[[1]]
+roznosci[['wektor']]
