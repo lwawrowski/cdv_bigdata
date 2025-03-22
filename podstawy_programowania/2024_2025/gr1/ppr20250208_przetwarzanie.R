@@ -212,3 +212,53 @@ komitety_stat <- wybory %>%
   summarise_at(vars(bs:ko),
                list(srednia = mean, mediana = median),
                na.rm=TRUE)
+
+komitety_stat <- wybory %>% 
+  summarise(across(bs:ko, 
+                   list(
+                     srednia = ~mean(.x, na.rm = TRUE),
+                     mediana = ~median(.x, na.rm = TRUE)
+                   )))
+
+
+# grupowanie --------------------------------------------------------------
+
+liczba_glos_powiat <- wybory %>% 
+  group_by(powiat) %>% 
+  summarise(srednia=round(mean(liczba_wyborcow_uprawnionych_do_glosowania))) %>% 
+  arrange(desc(srednia))
+
+wybory
+liczba_glos_powiat
+
+koperty_woj <- wybory %>% 
+  group_by(wojewodztwo, liczba_kopert_zwrotnych_w_ktorych_oswiadczenie_nie_bylo_podpisane) %>% 
+  summarise(liczebnosc=n())
+
+koperty_woj_n <- wybory %>% 
+  count(wojewodztwo, liczba_kopert_zwrotnych_w_ktorych_oswiadczenie_nie_bylo_podpisane, name = "liczba")
+
+
+# Jaka była średnia frekwencja w województwach?
+
+wybory %>% 
+  filter(!is.na(wojewodztwo)) %>% 
+  group_by(wojewodztwo) %>% 
+  summarise(srednia=mean(frekwencja)) %>% 
+  arrange(desc(srednia))
+
+# W jakich miastach za granicą utworzono najwięcej obwodów głosowania?
+
+obwody_zagranica <- wybory %>% 
+  filter(powiat == 'zagranica') %>% 
+  count(gmina) %>% 
+  arrange(desc(n))
+
+obwody_zagranica %>% 
+  head(10)
+
+obwody_zagranica %>% 
+  top_n(10, n)
+
+obwody_zagranica %>% 
+  slice_max(order_by = n, n = 10)
