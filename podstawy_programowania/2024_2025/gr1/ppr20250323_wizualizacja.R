@@ -62,3 +62,69 @@ ggplot(sklep, aes(x=sprzedaz, fill = czy_promocja)) +
 ggplot(sklep, aes(x=sprzedaz)) +
   geom_histogram(fill = "pink", color = "white")
 
+
+# wykres słupkowy ---------------------------------------------------------
+
+# dane jednostkowe
+ggplot(sklep, aes(x = czy_promocja)) +
+  geom_bar()
+
+ggplot(sklep, aes(y = czy_promocja)) +
+  geom_bar()
+
+# dane zagregowane
+sklep_promocja <- sklep %>% 
+  count(czy_promocja)
+
+ggplot(sklep_promocja, aes(x = czy_promocja, y = n)) +
+  geom_col()
+
+# połączenie przetwarzania danych i wykresu
+sklep %>% 
+  count(czy_promocja) %>% 
+  ggplot(aes(x = czy_promocja, y = n)) +
+  geom_col()
+
+# druga cecha
+ggplot(sklep, aes(x = czy_promocja, fill = czy_swieto_szkolne)) +
+  geom_bar(position = "dodge")
+
+# facets ------------------------------------------------------------------
+
+# 1 cecha
+ggplot(sklep, aes(x=sprzedaz, y=liczba_klientow)) +
+  geom_point() +
+  facet_wrap(~ czy_promocja)
+
+# 2 cechy
+ggplot(sklep, aes(x=sprzedaz, y=liczba_klientow)) +
+  geom_point() +
+  facet_wrap(dzien_tyg ~ czy_promocja, scales = "free", nrow = 2)
+
+# grid
+ggplot(sklep, aes(x=sprzedaz, y=liczba_klientow, color = czy_swieto_szkolne)) +
+  geom_point() +
+  facet_grid(dzien_tyg ~ czy_promocja)
+
+
+# wykres pudełkowy --------------------------------------------------------
+
+ggplot(sklep, aes(x=sprzedaz, y=czy_promocja)) +
+  geom_boxplot()
+
+ggplot(sklep, aes(x=sprzedaz, y=czy_promocja)) +
+  geom_violin()
+
+ggplot(sklep, aes(x=sprzedaz, y=czy_promocja)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.2, color = "darkblue")
+
+sklep %>% 
+  group_by(dzien_tyg) %>% 
+  summarise(srednia=mean(liczba_klientow)) %>% 
+  ggplot(aes(x=srednia, y=as.factor(dzien_tyg))) +
+  geom_col()
+
+ggplot(sklep, aes(x=liczba_klientow, y=as.factor(dzien_tyg))) +
+  geom_boxplot()
+
