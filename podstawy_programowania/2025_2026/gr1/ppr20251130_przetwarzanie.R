@@ -98,6 +98,108 @@ wybory_cc <- wybory %>%
   filter(complete.cases(.))
 
 
+# wybór kolumn ------------------------------------------------------------
+
+wybory_kolumny <- wybory %>% 
+  select(-wojewodztwo, -liczba_niewykorzystanych_kart_do_glosowania)
+
+wybory_kolumny <- wybory %>% 
+  select(-c(wojewodztwo, liczba_niewykorzystanych_kart_do_glosowania))
+
+wybory_kolumny <- wybory %>% 
+  select(nr_komisji:wojewodztwo)
+
+wybory_kolumny <- wybory %>% 
+  select(wojewodztwo:nr_komisji)
+
+wybory_liczba <- wybory %>% 
+  select(starts_with("liczba"))
+
+wybory_kart <- wybory %>% 
+  select(contains("kart"))
+
+wybory_num <- wybory %>% 
+  select_if(is.numeric)
+
+# zmiana nazwy kolumny ----------------------------------------------------
+
+wybory_siedziba <- wybory %>% 
+  rename(siedziba_komisji=siedziba) %>% 
+  rename_with(toupper)
+
+
+# nowe kolumny ------------------------------------------------------------
+
+wybory <- wybory %>% 
+  mutate(frekwencja=liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych/liczba_wyborcow_uprawnionych_do_glosowania_umieszczonych_w_spisie_z_uwzglednieniem_dodatkowych_formularzy_w_chwili_zakonczenia_glosowania*100)
+
+summary(wybory$frekwencja)
+
+# zadanie
+
+wybory <- wybory %>% 
+  mutate(bartoszewicz_artur_proc=bartoszewicz_artur/liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych,
+         biejat_magdalena_agnieszka_proc=biejat_magdalena_agnieszka/liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych,
+         braun_grzegorz_michal_proc=braun_grzegorz_michal/liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych)
+
+wybory <- wybory %>% 
+  mutate(across(bartoszewicz_artur:zandberg_adrian_tadeusz,
+                ~ . / liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych*100,
+                .names = "{.col}_proc"))
+
+wybory <- wybory %>% 
+  mutate(frekwencja_kat2=if_else(condition = frekwencja > 64, 
+                                 true = "powyżej średniej", 
+                                 false = "poniżej średniej"))
+
+wybory <- wybory %>% 
+  mutate(frekwencja_kat4=case_when(
+    frekwencja < 25 ~ "poniżej 25",
+    frekwencja >= 25 & frekwencja < 50 ~ "między 25 a 50",
+    frekwencja >= 50 & frekwencja < 75 ~ "między 50 a 75",
+    frekwencja > 75 ~ "powyżej 75"
+  ))
+
+
+# podsumowanie danych -----------------------------------------------------
+
+wybory_stat <- wybory %>% 
+  summarise(srednia=mean(liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych, na.rm=T),
+            minimum=min(liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych, na.rm=T),
+            maksimum=max(liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych, na.rm=T))
+
+kandydaci_stat <- wybory %>% 
+  summarise(across(bartoszewicz_artur:zandberg_adrian_tadeusz,
+                   list(srednia = ~ mean(., na.rm=T),
+                        minimum = ~ min(., na.rm=T),
+                        maksimum = ~ max(., na.rm=T))))
+
+# grupowanie --------------------------------------------------------------
+
+liczba_glos_powiat <- wybory %>% 
+  group_by(powiat) %>% 
+  summarise(srednia=mean(liczba_glosow_waznych_oddanych_lacznie_na_wszystkich_kandydatow_z_kart_waznych, na.rm=T)) %>% 
+  arrange(desc(srednia))
+
+# wybory
+# liczba_glos_powiat
+
+frekwencja_woj <- wybory %>% 
+  group_by(wojewodztwo, frekwencja_kat2) %>% 
+  summarise(liczba=n()) %>% 
+  drop_na()
+
+wybory %>% 
+  group_by(frekwencja_kat4) %>% 
+  summarise(liczba=n())
+
+wybory %>% 
+  count(frekwencja_kat4)
+
+
+
+
+
 
 
 
